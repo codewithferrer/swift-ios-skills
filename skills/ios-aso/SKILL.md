@@ -96,6 +96,7 @@ Order it by impact for the effort, and make every item specific:
 
 | `research.py search --terms "a,b,c" --country us [--mine-dir D] [--mine ID]` | Per term, who ranks; apps present across several terms; small apps ranking above their weight; stale apps still ranking; new entrants; cohort medians; shared name vocabulary not already in your listing |
 | `research.py profile --ids a,b,c [--mine ID]` | Side-by-side of specific apps and yours |
+| `research.py markets --market "jp:term1,term2" --market "kr:..."` | The same signals for several storefronts side by side, to see where the visible competition is lighter or heavier (terms written natively per market) |
 | `research.py reviews --id N --country us [--pages 2]` | Rating split and the words in low and high ratings, with the latest low-star reviews |
 
 `aso_audit.py` and `keyword_pack.py` are offline. `research.py` calls Apple's
@@ -120,6 +121,10 @@ apart under a request budget, and stores nothing.
 - **The public data has no subtitle, downloads or revenue**, and the App Store
   web pages refuse bulk scripted access. Read a few product pages by hand; do
   not loop over many. Ask before downloading screenshot images.
+- **Markets are compared on visible competition, not demand.** The table cannot
+  say how many people there would download the app. Mainland China also needs
+  an ICP filing (and an approval number for games); see
+  `references/competitor-research.md` before suggesting it.
 - **Search order is a proxy for rank**, not a guarantee, and a competitor's
   keyword field is hidden: infer from names and subtitles, say it is inference.
 

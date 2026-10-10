@@ -43,10 +43,21 @@ APOSTROPHE_RE = re.compile(r"[\u2019\u2018'`\u00b4]")
 SPLIT_NAME_RE = re.compile(r"\s+[:\-–—|•]\s+|:\s+")
 WORD_RE = re.compile(r"[^\W\d_]{2,}", re.UNICODE)
 CONTROL_RE = re.compile(r"[\x00-\x1f\x7f-\x9f]")
+CJK_RE = re.compile(r"[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uac00-\ud7af]")
+
+# Storefront code -> the language code Apple uses in languageCodesISO2A.
+STOREFRONT_LANGUAGE = {
+    "us": "EN", "gb": "EN", "ca": "EN", "au": "EN", "es": "ES", "mx": "ES", "jp": "JA", "kr": "KO", "cn": "ZH",
+    "tw": "ZH", "hk": "ZH", "sa": "AR", "ae": "AR", "de": "DE", "fr": "FR", "it": "IT", "br": "PT", "pt": "PT",
+    "nl": "NL", "ru": "RU", "tr": "TR", "in": "EN",
+}
 
 # An app ranks "above its weight" when it is in the top results of a term
 # with at most this fraction of the cohort's median number of ratings.
 OVERPERFORMER_RATIO = 0.25
+# Below this median the cohort is mostly unrated newcomers: there is no
+# incumbent to be "above", and flagging every unrated app would say nothing.
+MIN_MEDIAN_FOR_OVERPERFORMERS = 20
 
 
 # -- Text safety ---------------------------------------------------------------
@@ -170,6 +181,8 @@ def overperformers(results: dict[str, list[App]], top: int = 10) -> list[tuple[A
     if len(counts) < 5:
         return []
     median = statistics.median(counts)
+    if median < MIN_MEDIAN_FOR_OVERPERFORMERS:
+        return []
     out = []
     for term, listed in results.items():
         for rank, app in enumerate(listed[:top], start=1):
@@ -182,13 +195,21 @@ def name_match_share(listed: list[App], term: str, top: int = 10) -> tuple[int, 
     """(apps whose name contains every word of the term, apps considered).
     The subtitle is not part of the public API, so this is a lower bound:
     an app may match through its subtitle or hidden keywords.
+
+    Languages written without spaces (Japanese, Chinese) cannot be split into
+    words, so a term there is matched as a substring of the name.
     """
-    wanted = {w.lower() for w in WORD_RE.findall(term)} - STOPWORDS
+    wanted = [w.lower() for w in WORD_RE.findall(term) if w.lower() not in STOPWORDS]
     considered = listed[:top]
     if not wanted:
         return 0, len(considered)
-    hits = sum(1 for a in considered if wanted <= {w.lower() for w in WORD_RE.findall(a.name)})
-    return hits, len(considered)
+
+    def matches(name: str) -> bool:
+        lowered = name.lower()
+        tokens = {w.lower() for w in WORD_RE.findall(name)}
+        return all((w in lowered) if CJK_RE.search(w) else (w in tokens) for w in wanted)
+
+    return sum(1 for a in considered if matches(a.name)), len(considered)
 
 
 def stale_in_top(results: dict[str, list[App]], now: datetime, top: int = 10, days: int = 365) -> list[tuple[App, int]]:
@@ -333,3 +354,40 @@ def review_words(reviews: list[Review], low: bool, top: int = 12) -> list[tuple[
         text = APOSTROPHE_RE.sub("", f"{review.title} {review.content}".lower())
         counts.update({w for w in WORD_RE.findall(text) if w not in REVIEW_FILLER and len(w) > 2})
     return counts.most_common(top)
+
+
+# -- Comparing storefronts -----------------------------------------------------------
+
+
+def market_summary(results: dict[str, list[App]], now: datetime, language: str | None, top: int = 10) -> dict:
+    """Comparable signals for one storefront. They describe the *visible
+    competition*, not the size of the market: nothing here knows downloads.
+    """
+    apps = cohort(results, top)
+    rows = landscape(results, top)
+    shares = [name_match_share(listed, term, top) for term, listed in results.items()]
+    considered = sum(n for _, n in shares)
+    return {
+        "apps": len(apps),
+        "median_ratings": _median([a.rating_count for a in apps]),
+        "median_languages": _median([len(a.languages) for a in apps]),
+        "local_language_share": (sum(1 for a in apps if language in a.languages) / len(apps)) if apps and language else None,
+        "name_match_share": (sum(h for h, _ in shares) / considered) if considered else None,
+        "above_weight": len(overperformers(results, top)) if (_median([a.rating_count for a in apps]) or 0)
+        >= MIN_MEDIAN_FOR_OVERPERFORMERS else None,
+        "stale": len(stale_in_top(results, now, top)),
+        "new_entrants": len(new_entrants(results, now, top)),
+        "top": [r.app for r in rows[:3]],
+        "ids": {a.id for a in apps},
+    }
+
+
+def local_only_share(summaries: dict[str, dict]) -> dict[str, float | None]:
+    """Per market, the share of its cohort that appears in no other market's
+    cohort: high where local players dominate, low where global apps do.
+    """
+    out: dict[str, float | None] = {}
+    for code, s in summaries.items():
+        others = set().union(*(o["ids"] for c, o in summaries.items() if c != code)) if len(summaries) > 1 else set()
+        out[code] = (len(s["ids"] - others) / len(s["ids"])) if s["ids"] and len(summaries) > 1 else None
+    return out

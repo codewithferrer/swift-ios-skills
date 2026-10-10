@@ -93,6 +93,12 @@ class LandscapeTests(unittest.TestCase):
         self.assertEqual([a.name for a, _, _ in out], ["Small Gem"])
         self.assertEqual(out[0][2], 3)
 
+    def test_a_cohort_of_unrated_newcomers_has_no_overperformers(self):
+        listed = apps(*[(i, f"New {i}", {"count": 0}) for i in range(1, 9)], (9, "Some", {"count": 3}))
+        self.assertEqual(cl.overperformers({"t": listed}), [])
+        summary = cl.market_summary({"t": listed}, NOW, "EN")
+        self.assertIsNone(summary["above_weight"])
+
     def test_overperformers_need_a_cohort_to_compare_with(self):
         self.assertEqual(cl.overperformers({"t": apps((1, "A"), (2, "B"))}), [])
 
@@ -115,6 +121,35 @@ class SignalTests(unittest.TestCase):
         listed = [cl.normalize_app(old), cl.normalize_app(new)]
         out = cl.new_entrants({"t": listed}, NOW, within_days=180)
         self.assertEqual([a.name for a in out], ["New"])
+
+
+class MarketTests(unittest.TestCase):
+    def test_cjk_term_matches_as_a_substring(self):
+        listed = apps((1, "シンプル目覚まし時計"), (2, "アラーム - 目覚まし時計 HD"), (3, "Sunrise"))
+        self.assertEqual(cl.name_match_share(listed, "目覚まし時計"), (2, 3))
+
+    def test_summary_and_local_only_share(self):
+        jp = {"t": apps((1, "Global Alarm", {"languages": ["EN", "JA"], "count": 90000}),
+                        (2, "Local Only", {"languages": ["JA"], "count": 50}),
+                        (3, "Other Local", {"languages": ["JA"], "count": 70}),
+                        (4, "Big", {"languages": ["EN"], "count": 80000}),
+                        (5, "Bigger", {"languages": ["EN", "JA"], "count": 120000}),
+                        (6, "Huge", {"languages": ["EN", "JA"], "count": 200000}))}
+        us = {"t": apps((1, "Global Alarm", {"languages": ["EN"], "count": 90000}),
+                        (7, "Only In US", {"languages": ["EN"], "count": 10000}))}
+        s_jp = cl.market_summary(jp, NOW, "JA")
+        s_us = cl.market_summary(us, NOW, "EN")
+        self.assertEqual(s_jp["apps"], 6)
+        self.assertAlmostEqual(s_jp["local_language_share"], 5 / 6)
+        self.assertEqual(s_jp["above_weight"], 2)
+        only = cl.local_only_share({"jp": s_jp, "us": s_us})
+        self.assertAlmostEqual(only["jp"], 5 / 6)   # everything but the global app
+        self.assertAlmostEqual(only["us"], 1 / 2)
+        self.assertIsNone(cl.local_only_share({"jp": s_jp})["jp"])
+
+    def test_storefront_language_table_covers_the_markets_asked_about(self):
+        for code in ("us", "es", "mx", "jp", "kr", "cn", "sa"):
+            self.assertIn(code, cl.STOREFRONT_LANGUAGE)
 
 
 class StatsTests(unittest.TestCase):
@@ -342,6 +377,26 @@ class CliTests(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertIn("Rating split: 5* 1, 4* 0, 3* 0, 2* 0, 1* 1", out)
         self.assertIn("Alarm never rings", out)
+
+    def test_markets_report_and_budget_guard(self):
+        client = mock.Mock()
+        client.requests_made = 4
+        client.search.side_effect = lambda term, country, *a, **k: [
+            raw_app(i, f"{country} app {i}", count=100 * i) for i in range(1, 8)]
+        code, out = self.run_cli(["markets", "--market", "jp:aa,bb", "--market", "kr:cc,dd"], client)
+        self.assertEqual(code, 0)
+        for needle in ("2 storefront(s)", "jp", "kr", "not market size", "local-only", "Most widely present"):
+            self.assertIn(needle, out)
+        self.assertEqual(client.search.call_count, 4)
+
+        client2 = mock.Mock()
+        code, _ = self.run_cli(["markets", "--market", "jp:a,b,c", "--max-requests", "2"], client2)
+        self.assertEqual(code, 1)
+        client2.search.assert_not_called()  # nothing is spent when the budget cannot cover the plan
+
+    def test_markets_rejects_a_malformed_spec(self):
+        code, _ = self.run_cli(["markets", "--market", "jp"], mock.Mock())
+        self.assertEqual(code, 1)
 
     def test_empty_terms(self):
         code, _ = self.run_cli(["search", "--terms", " , "], self.fake_client({}))

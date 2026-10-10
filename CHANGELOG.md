@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.7.0
+
+### Skills
+
+- `ios-aso`: `research.py markets` compares several storefronts side by side
+  with the same signals (cohort size, median ratings and languages, how many
+  serve the local language, name matches, small apps above their weight, stale
+  apps, new entrants, and how local the field is), with terms written natively
+  per market. The reference gains a section on reading it and on the costs
+  of entering a market, including mainland China's ICP requirement.
+- `ios-aso`: name matching now works for languages written without spaces
+  (Japanese, Chinese), and "above their weight" is not reported when most of
+  the cohort has no ratings, where it would only mean "unrated".
 ## v0.6.0
 
 ### Skills

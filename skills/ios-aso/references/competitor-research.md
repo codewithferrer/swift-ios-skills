@@ -120,6 +120,50 @@ Deliver it as a table:
 |------------------------|------------|-----------------------|----------------|
 | Small apps in the top 10 put the verb phrase in the name | The name carries relevance for small apps | Move the phrase into the name | Rank for the term, 3 weeks after release |
 
+## Comparing markets
+
+To decide where else a localized app could go, compare storefronts with the
+same signals instead of guessing:
+
+```bash
+python3 scripts/research.py markets --max-requests 30 \
+    --market "us:alarm clock,alarm challenge,heavy sleeper alarm,wake up puzzle" \
+    --market "jp:目覚まし時計,アラーム,二度寝防止,ミッション アラーム" \
+    --market "kr:알람,알람시계,기상 미션,미션 알람"
+```
+
+Use 3 to 4 terms per storefront, **written natively** for it: a translation of
+the English terms is usually not what people there type. Ask a native speaker or
+check the terms against what the top results use in their names.
+
+How to read the table (it describes the *visible competition*, never market
+size, because nothing here knows downloads):
+
+| Column | A high value suggests | A low value suggests |
+|--------|-----------------------|----------------------|
+| `med.ratings` | Established incumbents with social proof to beat | A young field, mostly newcomers |
+| `local lang` | Competitors are localized for that language | Few results actually serve that language: an opening |
+| `name match` | Relevance is won in the name; claim the phrase there | Relevance comes from elsewhere, or nobody has claimed the phrase |
+| `above wt` | Small apps can rank: a listing can win | (n/a) no incumbent to be above |
+| `new 6m` | Crowded by recent entrants | Quiet |
+| `local-only` | Local players dominate; global apps are secondary | Global apps dominate |
+
+Before treating a market as an opportunity, check what it costs:
+
+- **Localization is real work.** The listing, screenshots and the app itself
+  must read as native, and right-to-left languages need the interface to
+  mirror. Machine translation is a draft, not a release.
+- **Mainland China needs paperwork.** Apple requires an ICP filing number for
+  an app to be available there, and games need a further approval number from
+  the regulator. Without them the app does not appear on that storefront. The
+  Chinese-language storefronts of Taiwan and Hong Kong do not carry that
+  requirement.
+- **Terms are not interchangeable between countries that share a language.**
+  Spain and Mexico, or Portugal and Brazil, search with different words.
+
+Source: Apple, mainland China compliance information (App Store Connect Help):
+https://developer.apple.com/help/app-store-connect/manage-compliance-information/view-mainland-china-compliance-information/
+
 ## Pitfalls
 
 - **Survivorship and brand.** You see the winners, not the apps that tried the

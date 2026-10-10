@@ -6,6 +6,8 @@
              statistics, and the vocabulary their names share.
     profile  A side-by-side of specific apps (and yours).
     reviews  What users of one app praise and complain about.
+    markets  The same terms-based picture for several storefronts side by side,
+             to see where the visible competition is lighter or heavier.
 
 Public data only, at a polite pace and with a hard request budget (Apple
 documents about 20 calls per minute). Nothing is written to disk. It cannot
@@ -20,6 +22,7 @@ Usage:
     python research.py search --terms "..." --mine 1234567890 --mine-dir metadata
     python research.py profile --ids 111,222,333 --mine 1234567890
     python research.py reviews --id 1163786766 --country us --pages 2
+    python research.py markets --market "jp:目覚まし時計,アラーム" --market "kr:알람,알람시계"
 """
 
 from __future__ import annotations
@@ -47,6 +50,9 @@ from competitor_logic import (
     review_summary,
     review_words,
     stale_in_top,
+    STOREFRONT_LANGUAGE,
+    local_only_share,
+    market_summary,
 )
 from itunes_api import ApiError, ITunesClient
 
@@ -137,7 +143,7 @@ def cmd_search(args) -> int:
     over = overperformers(results, top)
     print("\n== Ranking above their weight: top results with few ratings for the cohort")
     if not over:
-        print("  none found (or the cohort is too small to say)")
+        print("  none: the cohort is too small, or mostly unrated newcomers with no incumbent to be above")
     for app, term, rank in over[:10]:
         print(f"  #{rank} for \"{clean(term, 30)}\"  {clean(app.name, 34):<34} "
               f"{app.rating:.1f} x {app.rating_count:,}  {len(app.languages)} lang  {app.iphone_shots} shots")
@@ -276,12 +282,73 @@ def cmd_reviews(args) -> int:
     return 0
 
 
+def cmd_markets(args) -> int:
+    specs = []
+    for raw in args.market:
+        code, _, terms = raw.partition(":")
+        specs.append((code.strip().lower(), csv(terms)))
+    if any(not code or not terms for code, terms in specs):
+        print('Each --market must look like "jp:term1,term2".', file=sys.stderr)
+        return 1
+    needed = sum(len(terms) for _, terms in specs)
+    if needed > args.max_requests:
+        print(f"That needs {needed} requests and --max-requests is {args.max_requests}. Raise it deliberately "
+              "or use fewer terms (Apple documents about 20 calls a minute).", file=sys.stderr)
+        return 1
+
+    client = make_client(args)
+    now = datetime.now(timezone.utc)
+    summaries: dict[str, dict] = {}
+    for code, terms in specs:
+        results = {t: [normalize_app(r) for r in client.search(t, code, args.limit)] for t in terms}
+        summaries[code] = market_summary(results, now, STOREFRONT_LANGUAGE.get(code), args.top)
+        summaries[code]["terms"] = terms
+    local_only = local_only_share(summaries)
+
+    if args.json:
+        print(json.dumps({c: {k: v for k, v in s.items() if k not in ("ids", "top")} | {
+            "local_only_share": local_only[c], "top": [clean(a.name, 60) for a in s["top"]]}
+            for c, s in summaries.items()}, ensure_ascii=False, indent=2, default=str))
+        return 0
+
+    def pct(value):
+        return "  n/a" if value is None else f"{round(100 * value):>4}%"
+
+    print(f"{len(summaries)} storefront(s) | {client.requests_made} request(s) | top {args.top} per term | "
+          "visible competition only: this is not market size")
+    print(UNTRUSTED)
+    header = (f"\n{'market':<7}{'terms':>6}{'apps':>6}{'med.ratings':>13}{'med.lang':>10}{'local lang':>12}"
+              f"{'name match':>12}{'above wt':>10}{'stale 1y':>10}{'new 6m':>8}{'local-only':>12}")
+    print(header)
+    print("-" * (len(header) - 1))
+    for code, s in summaries.items():
+        print(f"{code:<7}{len(s['terms']):>6}{s['apps']:>6}{int(s['median_ratings'] or 0):>13,}"
+              f"{int(s['median_languages'] or 0):>10}{pct(s['local_language_share']):>12}{pct(s['name_match_share']):>12}"
+              f"{'n/a' if s['above_weight'] is None else s['above_weight']:>10}{s['stale']:>10}{s['new_entrants']:>8}{pct(local_only[code]):>12}")
+    print("\nMost widely present apps per market (untrusted names):")
+    for code, s in summaries.items():
+        names = "; ".join(f"{clean(a.name, 30)} ({a.rating:.1f} x {a.rating_count:,})" for a in s["top"])
+        print(f"  {code}: {names or 'none'}")
+    print("""
+How to read it:
+  med.ratings   low = the visible apps are young or small; it says nothing about demand.
+  local lang    share of those apps that offer the storefront's own language.
+  name match    share of top results with the whole term in their name (lower bound).
+  above wt      top results with few ratings next to the cohort: where a listing can win.
+                n/a when most apps have no ratings yet (no incumbent to be above).
+  stale 1y      top results not updated for a year or more.
+  new 6m        top results first released in the last 180 days: a crowding signal.
+  local-only    share found in no other audited market: high means local players dominate.""")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="command", required=True)
 
-    def common(p):
-        p.add_argument("--country", default="us", help="Storefront, a two-letter code (default: us)")
+    def common(p, country=True):
+        if country:
+            p.add_argument("--country", default="us", help="Storefront, a two-letter code (default: us)")
         p.add_argument("--lang", help="Result language, e.g. en_us, es_es (default: the service's)")
         p.add_argument("--max-requests", type=int, default=30, help="Hard cap on requests (default: 30)")
         p.add_argument("--interval", type=float, default=3.0, help="Seconds between requests (default: 3)")
@@ -297,6 +364,14 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--mine-locale", default="en-US", help="Which locale of --mine-dir to read (default: en-US)")
     s.add_argument("--min-apps", type=int, default=3, help="A name word must appear in this many apps (default: 3)")
     s.set_defaults(handler=cmd_search)
+
+    m = sub.add_parser("markets", help="Compare storefronts side by side")
+    common(m, country=False)
+    m.add_argument("--market", action="append", required=True,
+                   help='"code:term1,term2" for one storefront; repeat for each (terms in that language)')
+    m.add_argument("--limit", type=int, default=25, help="Results fetched per term (default: 25)")
+    m.add_argument("--top", type=int, default=10, help="How many of each term's results to analyse (default: 10)")
+    m.set_defaults(handler=cmd_markets)
 
     p = sub.add_parser("profile", help="Compare specific apps")
     common(p)
