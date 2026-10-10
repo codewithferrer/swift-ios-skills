@@ -13,7 +13,7 @@ Code and with any other agent that supports the format.
 | Skill | What it does |
 |-------|--------------|
 | [`app-store-release`](skills/app-store-release) | Automates App Store Connect release chores through Apple's API: status and build-failure diagnostics, pre-submission readiness check, localization audit, draft release notes from the git history, create a version and attach a build, push "What's New" and store listing text (with a diff before writing), upload screenshots, submit for review, release after approval, and read or reply to customer reviews. |
-| [`ios-aso`](skills/ios-aso) | iOS-only App Store optimization: audits the name, subtitle, keyword field and localizations against Apple's rules, finds wasted or repeated keywords across storefronts, packs a ranked keyword list into the 100-character field, and guides conversion work and measurement. Every claim is labelled as Apple-stated, observed or industry-reported. |
+| [`ios-aso`](skills/ios-aso) | iOS-only App Store optimization: audits the name, subtitle, keyword field and localizations against Apple's rules, finds wasted or repeated keywords across storefronts, packs a ranked keyword list into the 100-character field, researches a competitive segment from Apple's public data (who ranks above their weight, what their names and users say), and guides conversion work and measurement. Every claim is labelled as Apple-stated, observed or industry-reported. |
 
 ## Install
 

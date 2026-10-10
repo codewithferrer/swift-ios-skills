@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.6.0
+
+### Skills
+
+- `ios-aso`: competitive research from Apple's public data. `research.py search`
+  shows, per term, who ranks; the apps present across several terms; small apps
+  ranking above their weight; stale apps that still rank; new entrants; cohort
+  medians; and the vocabulary their names share that your listing lacks.
+  `profile` compares specific apps with yours; `reviews` summarises what
+  users praise and complain about. The client spaces its requests, has a hard
+  budget, and stores nothing, in line with Apple's terms. New
+  `references/competitor-research.md` covers the method and its pitfalls.
 ## v0.5.0
 
 ### Skills
