@@ -122,6 +122,15 @@ def load_app(key: str | None = None, apps_file: str | None = None) -> AppConfig:
     )
 
 
+def load_all_apps(apps_file: str | None = None) -> list[AppConfig]:
+    path = find_apps_file(apps_file)
+    try:
+        keys = list(json.loads(path.read_text()))
+    except json.JSONDecodeError as exc:
+        raise ConfigError(f"{path} is not valid JSON: {exc}") from exc
+    return [load_app(key, str(path)) for key in keys]
+
+
 def add_app_arguments(parser) -> None:
     parser.add_argument(
         "--app",

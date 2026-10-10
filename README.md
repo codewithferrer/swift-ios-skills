@@ -12,7 +12,7 @@ Code and with any other agent that supports the format.
 
 | Skill | What it does |
 |-------|--------------|
-| [`app-store-release`](skills/app-store-release) | Automates App Store Connect release chores through Apple's API: draft release notes from the git history, create a version and attach a build, push "What's New" and store listing text (with a diff before writing), upload screenshots, submit for review, release after approval. |
+| [`app-store-release`](skills/app-store-release) | Automates App Store Connect release chores through Apple's API: status and build-failure diagnostics, localization audit, draft release notes from the git history, create a version and attach a build, push "What's New" and store listing text (with a diff before writing), upload screenshots, submit for review, release after approval, and read or reply to customer reviews. |
 
 ## Install
 

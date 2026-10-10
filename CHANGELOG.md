@@ -1,5 +1,26 @@
 # Changelog
 
+## v0.3.0
+
+### Skills
+
+- `app-store-release`: `status.py` reports where each app stands in one
+  read-only view: newest versions and their state, latest build, uploads that
+  failed or got stuck since then (with Apple's error codes), latest Xcode Cloud
+  run, and reviews awaiting a reply.
+- `app-store-release`: `audit_localizations.py` finds localization gaps across
+  the listing, app name and subtitle, in-app purchases, and Game Center
+  leaderboards and achievements, telling a missing language apart from one
+  that is only present in another region.
+- `app-store-release`: `reviews.py` lists written customer reviews and posts or
+  deletes public replies, previewing by default. New `references/reviews.md`
+  covers triage and how to write replies.
+- `app-store-release`: `create_version.py` now explains why a build is missing,
+  from Apple's upload record and the latest Xcode Cloud run, instead of only
+  reporting it as not found.
+- `app-store-release`: API errors carry their HTTP status, so callers can tell
+  an expected 404 from a real failure.
+
 ## v0.2.0
 
 ### Skills

@@ -5,6 +5,49 @@ Exact commands for each script. Every script also has `--help`.
 Every script takes `--app` (omit it when the apps file has one app) and
 `--version` (the exact `versionString`, e.g. `1.9.2`).
 
+## Checks - `status.py`, `audit_localizations.py`
+
+Both are read-only.
+
+```bash
+python3 scripts/status.py --app my-app
+python3 scripts/status.py --all
+python3 scripts/status.py --app my-app --versions 5
+```
+
+`status.py` reports, per app: the newest versions with their state and what it
+means, the latest build, any upload newer than the latest processed build that
+failed or is stuck (with Apple's error codes), the latest Xcode Cloud run, and
+how many written reviews still have no reply. A section the API key cannot read
+is listed as "not available" instead of aborting the report.
+
+```bash
+python3 scripts/audit_localizations.py --app my-app
+python3 scripts/audit_localizations.py --all --strict
+python3 scripts/audit_localizations.py --app my-app --version 1.9.2 --locales en-US,es-ES,ja
+```
+
+`audit_localizations.py` compares, against the locales on the version's
+listing (or `--locales`): the listing's description, keywords and What's New,
+the app name and subtitle, every in-app purchase, and every Game Center
+leaderboard and achievement. `GAP` is a language that is missing outright; `~`
+is a language present only in another region (for example `en-GB` where
+`en-US` is expected). `--strict` exits 1 when any `GAP` exists.
+
+## Customer reviews - `reviews.py`
+
+```bash
+python3 scripts/reviews.py list --app my-app
+python3 scripts/reviews.py list --app my-app --unanswered --rating 1 --territory USA
+python3 scripts/reviews.py list --app my-app --summary
+python3 scripts/reviews.py reply --review <id> --body-file reply.txt          # preview
+python3 scripts/reviews.py reply --review <id> --body-file reply.txt --send   # posts
+python3 scripts/reviews.py delete-reply --response <id> --delete
+```
+
+`reply` and `delete-reply` change public text, so they preview by default and
+need `--send` / `--delete`. Drafting guidance is in `references/reviews.md`.
+
 ## 0. Gather what changed - `collect_changes.py`
 
 Read-only: runs `git log`, never contacts App Store Connect, needs no

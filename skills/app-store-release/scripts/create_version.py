@@ -23,6 +23,7 @@ import argparse
 import sys
 
 from asc_common import ConfigError, add_app_arguments, confirm, load_client_module, resolve_app
+from asc_status import explain_missing_build
 
 RELEASE_TYPES = {
     "manual": "MANUAL",
@@ -73,10 +74,23 @@ def main() -> int:
         builds = client.list_builds(app.app_id, build_number=args.build)
         if not builds:
             if args.build:
-                print(f"No processed build '{args.build}' found for this app yet -- "
-                      "upload it via Xcode/Transporter and wait for processing to finish.", file=sys.stderr)
+                print(f"No processed build '{args.build}' found for this app yet -- it is still "
+                      "processing, failed, or was never uploaded.", file=sys.stderr)
             else:
                 print("No processed builds found for this app at all yet.", file=sys.stderr)
+            # Say why, from what Apple and Xcode Cloud report, instead of
+            # leaving "go and wait" as the only advice.
+            uploads, runs = [], None
+            try:
+                uploads = client.list_build_uploads(app.app_id, limit=10, build_number=args.build)
+            except asc.AppStoreConnectError:
+                pass
+            try:
+                runs = client.list_ci_build_runs(app.app_id, limit=5)
+            except asc.AppStoreConnectError:
+                pass
+            for line in explain_missing_build(uploads, runs, args.build):
+                print(line, file=sys.stderr)
             return 1
 
         if not args.build and len(builds) > 1:

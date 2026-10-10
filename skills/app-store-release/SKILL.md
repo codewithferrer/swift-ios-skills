@@ -1,6 +1,6 @@
 ---
 name: app-store-release
-description: Automate the repetitive App Store Connect chores of an iOS app release through Apple's official API instead of the website - create a version and attach an uploaded build, draft the release notes from the git history since the last release and push them as localized "What's New" text from a RELEASE_NOTES.md, pull and push the store listing text (name, subtitle, description, keywords, promotional text, support and marketing URLs), upload App Store screenshots, submit for App Review, and release an approved version. Use whenever the user wants to ship, release, or submit an iOS app version, write or update release notes, "What's New", description, keywords or subtitle on App Store Connect, back up or version-control the store listing, upload App Store screenshots, create a new App Store version, or publish an approved build, even if they never mention the API or this skill by name.
+description: Automate App Store Connect release chores through Apple's official API instead of the website: check where a version, build upload or review stands and why a build failed, draft release notes from git history and push them as localized "What's New", pull and push store listing text, find missing localizations (listing, in-app purchases, Game Center), create versions and attach builds, upload screenshots, submit for App Review, release approved versions, and read or reply to customer reviews. Use whenever the user wants to ship, release or submit an iOS app version, asks where a version or build stands or why a build is missing, or wants release notes, listing text, localization gaps, screenshots or review replies handled, even if they never mention the API or this skill by name.
 compatibility: Python 3.9+ with requests and PyJWT[crypto]; needs network access to api.appstoreconnect.apple.com and an App Store Connect API key (App Manager role).
 ---
 
@@ -8,8 +8,8 @@ compatibility: Python 3.9+ with requests and PyJWT[crypto]; needs network access
 
 Wraps a handful of release-day chores in small Python scripts that talk to the
 App Store Connect API (JWT auth with a team API key). It does not upload
-binaries - the build still goes up through Xcode/Transporter - it automates
-what happens in App Store Connect afterwards.
+binaries - builds still arrive through Xcode, Xcode Cloud or Transporter - it
+automates what happens in App Store Connect around them.
 
 All commands below are run from this skill's directory, e.g.
 `python3 scripts/create_version.py ...`. Use the skill's base directory path
@@ -48,7 +48,6 @@ Never read, print, copy, or commit the contents of `.env` or the `.p8` file.
 | 4 | `upload_screenshots.py --app A --version V --locale L --dir D [--replace]` | Uploads a folder of PNGs to a screenshot set, in filename order. |
 | 5 | `submit_for_review.py --app A --version V --prepare` / `--submit` | `--prepare` builds a draft review submission; `--submit` sends it to Apple. |
 | 6 | `release_version.py --app A --version V --release` | Publishes an approved version that was created with manual release. |
-| - | `pull_metadata.py --app A --version V` | Read-only against Apple: downloads the live listing text into the metadata folder. Bootstraps it and doubles as a backup. |
 
 `--app` can be omitted when the apps file lists a single app. Every script has
 `--help`.
@@ -56,7 +55,20 @@ Never read, print, copy, or commit the contents of `.env` or the `.p8` file.
 Typical order is 0 (draft the notes) -> 1 -> 2 -> 3 -> 4 -> 5, then 6 only after Apple
 approves. Step 0 can happen before or after step 1.
 Steps 2-4 need the version to still be editable (not yet approved/released).
-`pull_metadata.py` can run at any time.
+
+## Checking where things stand
+
+Read-only, safe to run at any time and worth running before acting:
+
+| Command | Answers |
+|---------|---------|
+| `status.py --app A` (or `--all`) | Newest versions and their review/release state, latest processed build, any upload since then that failed or got stuck (with Apple's error codes), latest Xcode Cloud run, reviews awaiting a reply. |
+| `audit_localizations.py --app A` | Which listing fields, in-app purchases, Game Center leaderboards and achievements are missing a language the listing supports. |
+| `reviews.py list --app A [--unanswered] [--summary]` | Written customer reviews, newest first, with any reply under each. |
+| `pull_metadata.py --app A --version V` | Downloads the live listing text into the metadata folder. Bootstraps it and doubles as a backup. |
+
+When `create_version.py` cannot find a build it now says why, from Apple's own
+upload record and Xcode Cloud, so "where is my build" rarely needs the website.
 
 ## Safety rules
 
@@ -84,6 +96,10 @@ to Apple.
 - **`--yes` is for after consent, not instead of it.** Claude has no terminal to
   type into, so a confirmed write is run with `--yes`. Adding it before the
   user has seen the preview defeats the confirmation prompts.
+- **A review reply is public text under the user's name.** `reviews.py reply`
+  previews unless `--send` is given. Draft it, show it next to the review it
+  answers, and post only after the user approves that specific reply. Tone
+  and limits: `references/reviews.md`.
 - **`--replace` deletes screenshots.** Say so before using it. New versions
   inherit the previous version's screenshots, so a non-empty set is normal and
   the script refuses to mix old and new without `--replace`.
@@ -147,6 +163,19 @@ One block can serve several locales.
   the version is already `READY_FOR_SALE`; expect `409` for most fields.
 - **Text over Apple's character limits** (name/subtitle 30, keywords 100,
   promotional text 170, description 4000) is rejected locally before any call.
+- **"Stuck or failed" means newer than the latest processed build.** `status.py`
+  ignores older failed uploads, which are history and say nothing about the
+  current build.
+- **Audit `GAP` versus `~`.** `GAP` means the language is missing outright. `~`
+  means only another region of that language exists (Game Center often has
+  `en-GB` and no `en-US`, or `es-ES` and no `es-MX`). Chinese Simplified and
+  Traditional are never treated as stand-ins for each other.
+- **Only written reviews exist for the API.** Star-only ratings are not
+  exposed, so zero reviews here does not mean zero ratings. A reply cannot be
+  edited: delete it and post a new one.
+- **A `403` on some endpoints is the key's role, not a bug.** Analytics reports
+  and TestFlight tester lists refused an App Manager key during development.
+  `status.py` shows such sections as "not available" instead of failing.
 - **API errors are printed verbatim** with the HTTP status. A `409` usually
   means the object is in a state that does not allow the change (already in
   review, already released).
@@ -160,6 +189,7 @@ release is above.
 |------|--------------|
 | `references/setup.md` | The user has no API key, credentials folder, apps file or virtualenv yet. |
 | `references/release-notes.md` | Writing or rewriting release notes: what to keep, style, translating, file structure. |
+| `references/reviews.md` | Answering customer reviews: how to triage, draft and post replies, and what never to say. |
 | `references/usage.md` | You need the exact flags and examples for a script. |
 | `references/metadata-files.md` | Creating or editing the listing text folder: file names, limits, what each file maps to. |
 

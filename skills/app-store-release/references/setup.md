@@ -64,3 +64,11 @@ Then run the scripts with that interpreter, or activate the venv first.
 (`pip install` straight into a Homebrew or system Python is often blocked by
 PEP 668.)
 
+## Key roles and 403 responses
+
+An API key carries a role, and some endpoints refuse a key whose role is too
+low. While building this skill, an **App Manager** key could read versions,
+builds, Xcode Cloud runs, in-app purchases, Game Center and customer reviews,
+but was refused (`403`) on analytics report requests and on the TestFlight
+tester list. Those parts of the API are not used by these scripts; if you add
+them and hit a 403, try a key with a higher role before debugging the code.

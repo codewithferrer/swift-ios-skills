@@ -17,7 +17,8 @@ import requests
 
 from asc_common import config_dir as default_config_dir
 
-API_BASE = "https://api.appstoreconnect.apple.com/v1"
+API_ROOT = "https://api.appstoreconnect.apple.com"
+API_BASE = f"{API_ROOT}/v1"
 TOKEN_LIFETIME_SECONDS = 15 * 60  # Apple caps this at 20 minutes.
 
 
@@ -37,7 +38,9 @@ def _load_env_file(path: Path) -> None:
 
 
 class AppStoreConnectError(RuntimeError):
-    pass
+    def __init__(self, message: str, status_code: int | None = None):
+        super().__init__(message)
+        self.status_code = status_code
 
 
 class AppStoreConnectClient:
@@ -107,7 +110,8 @@ class AppStoreConnectClient:
         response = requests.request(method, url, headers=self._headers(), timeout=30, **kwargs)
         if response.status_code >= 400:
             raise AppStoreConnectError(
-                f"{method} {url} -> {response.status_code}: {response.text}"
+                f"{method} {url} -> {response.status_code}: {response.text}",
+                status_code=response.status_code,
             )
         if response.status_code == 204 or not response.content:
             return {}
@@ -470,3 +474,152 @@ class AppStoreConnectClient:
             f"/appScreenshotSets/{set_id}/relationships/appScreenshots",
             json={"data": [{"type": "appScreenshots", "id": sid} for sid in screenshot_ids]},
         )
+
+    # -- Status and diagnostics (read-only) --------------------------------
+
+    def list_versions(self, app_id: str, limit: int = 5) -> list[dict]:
+        """appStoreVersions, newest first."""
+        data = self._request("GET", f"/apps/{app_id}/appStoreVersions", params={"limit": limit})
+        return data.get("data", [])
+
+    def list_build_uploads(self, app_id: str, limit: int = 10, build_number: str | None = None) -> list[dict]:
+        """Uploads Apple has received, newest first, whatever their state.
+
+        Unlike list_builds, which only knows builds that finished processing,
+        this still shows an upload that failed, with the errors Apple reported
+        in `attributes.state.errors`.
+        """
+        params = {"limit": limit, "sort": "-uploadedDate"}
+        if build_number:
+            params["filter[cfBundleVersion]"] = build_number
+        return self._request("GET", f"/apps/{app_id}/buildUploads", params=params).get("data", [])
+
+    def list_ci_build_runs(self, app_id: str, limit: int = 3) -> list[dict] | None:
+        """Newest Xcode Cloud runs, or None when the app has no Xcode Cloud product."""
+        try:
+            product = self._request("GET", f"/apps/{app_id}/ciProduct")
+        except AppStoreConnectError as exc:
+            if exc.status_code == 404:
+                return None
+            raise
+        if not product.get("data"):
+            return None
+        runs = self._request(
+            "GET",
+            f"/ciProducts/{product['data']['id']}/buildRuns",
+            params={"limit": limit, "sort": "-number"},
+        )
+        return runs.get("data", [])
+
+    # -- Customer reviews ---------------------------------------------------
+    #
+    # A response is a public reply under the review. Apple creates it as
+    # PENDING_PUBLISH and publishes it shortly after. The API has no way to
+    # edit one: delete it and post a new one.
+
+    def list_customer_reviews(
+        self,
+        app_id: str,
+        limit: int = 50,
+        rating: int | None = None,
+        territory: str | None = None,
+        unanswered: bool = False,
+    ) -> tuple[list[dict], dict]:
+        """(reviews newest first, {response id: response resource}). Only
+        written reviews are returned; star-only ratings are not exposed.
+        """
+        params = {"limit": limit, "sort": "-createdDate", "include": "response"}
+        if rating is not None:
+            params["filter[rating]"] = rating
+        if territory:
+            params["filter[territory]"] = territory
+        if unanswered:
+            params["exists[publishedResponse]"] = "false"
+        data = self._request("GET", f"/apps/{app_id}/customerReviews", params=params)
+        responses = {
+            item["id"]: item for item in data.get("included", []) if item.get("type") == "customerReviewResponses"
+        }
+        return data.get("data", []), responses
+
+    def list_review_summarizations(self, app_id: str, platform: str = "IOS") -> list[dict]:
+        data = self._request(
+            "GET",
+            f"/apps/{app_id}/customerReviewSummarizations",
+            params={"filter[platform]": platform},
+        )
+        return data.get("data", [])
+
+    def get_customer_review(self, review_id: str) -> dict:
+        return self._request("GET", f"/customerReviews/{review_id}")["data"]
+
+    def get_review_response(self, review_id: str) -> dict | None:
+        """The public reply under a review, or None when it has none."""
+        try:
+            data = self._request("GET", f"/customerReviews/{review_id}/response")
+        except AppStoreConnectError as exc:
+            if exc.status_code == 404:
+                return None
+            raise
+        return data.get("data")
+
+    def create_review_response(self, review_id: str, body: str) -> dict:
+        data = self._request(
+            "POST",
+            "/customerReviewResponses",
+            json={
+                "data": {
+                    "type": "customerReviewResponses",
+                    "attributes": {"responseBody": body},
+                    "relationships": {"review": {"data": {"type": "customerReviews", "id": review_id}}},
+                }
+            },
+        )
+        return data["data"]
+
+    def delete_review_response(self, response_id: str) -> None:
+        self._request("DELETE", f"/customerReviewResponses/{response_id}")
+
+    # -- Localization coverage (read-only) -----------------------------------
+    #
+    # In-app purchases use the v2 resource family, so their localizations
+    # live under /v2. Game Center leaderboards and achievements are v1.
+
+    def list_in_app_purchases(self, app_id: str) -> list[dict]:
+        return self._request("GET", f"/apps/{app_id}/inAppPurchasesV2", params={"limit": 200}).get("data", [])
+
+    def list_iap_localizations(self, iap_id: str) -> dict:
+        """locale -> localization resource, for an in-app purchase (v2) id."""
+        data = self._request(
+            "GET",
+            f"{API_ROOT}/v2/inAppPurchases/{iap_id}/inAppPurchaseLocalizations",
+            params={"limit": 200},
+        )
+        return {item["attributes"]["locale"]: item for item in data.get("data", [])}
+
+    def find_game_center_detail_id(self, app_id: str) -> str | None:
+        try:
+            data = self._request("GET", f"/apps/{app_id}/gameCenterDetail")
+        except AppStoreConnectError as exc:
+            if exc.status_code == 404:
+                return None
+            raise
+        return data["data"]["id"] if data.get("data") else None
+
+    def list_leaderboards(self, game_center_detail_id: str) -> list[dict]:
+        data = self._request(
+            "GET", f"/gameCenterDetails/{game_center_detail_id}/gameCenterLeaderboards", params={"limit": 200}
+        )
+        return data.get("data", [])
+
+    def list_achievements(self, game_center_detail_id: str) -> list[dict]:
+        data = self._request(
+            "GET", f"/gameCenterDetails/{game_center_detail_id}/gameCenterAchievements", params={"limit": 200}
+        )
+        return data.get("data", [])
+
+    def list_game_center_localizations(self, kind: str, resource_id: str) -> dict:
+        """locale -> localization resource for a leaderboard or achievement.
+        `kind` is "gameCenterLeaderboards" or "gameCenterAchievements".
+        """
+        data = self._request("GET", f"/{kind}/{resource_id}/localizations", params={"limit": 200})
+        return {item["attributes"]["locale"]: item for item in data.get("data", [])}
