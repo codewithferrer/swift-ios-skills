@@ -1,0 +1,34 @@
+{
+  "name": "codewithferrer-skills",
+  "owner": {
+    "name": "Daniel Ferrer"
+  },
+  "metadata": {
+    "description": "Agent skills for iOS and Swift development",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "app-store-release",
+      "source": "./",
+      "description": "Automate the repetitive App Store Connect chores of an iOS app release through Apple's official API instead of the website - create a version and attach an uploaded build, push localized \"What's New\" text from a RELEASE_NOTES.md, pull and push the store listing text (name, subtitle, description, keywords, promotional text, support and marketing URLs), upload App Store screenshots, submit for App Review, and release an approved version. Use whenever the user wants to ship, release, or submit an iOS app version, update release notes, \"What's New\", description, keywords or subtitle on App Store Connect, back up or version-control the store listing, upload App Store screenshots, create a new App Store version, or publish an approved build, even if they never mention the API or this skill by name.",
+      "version": "0.1.0",
+      "category": "development",
+      "strict": false,
+      "skills": [
+        "./skills/app-store-release"
+      ]
+    },
+    {
+      "name": "all-skills",
+      "source": "./",
+      "description": "Every skill in this repository, installed together.",
+      "version": "0.1.0",
+      "category": "development",
+      "strict": false,
+      "skills": [
+        "./skills/app-store-release"
+      ]
+    }
+  ]
+}

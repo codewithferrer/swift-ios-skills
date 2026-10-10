@@ -1,0 +1,14 @@
+{
+  "my-app": {
+    "app_id": "1234567890",
+    "release_notes_path": "RELEASE_NOTES.md",
+    "metadata_path": "metadata",
+    "skip_locales": [],
+    "screenshot_display_type": "APP_IPHONE_65"
+  },
+  "my-other-app": {
+    "app_id": "0987654321",
+    "release_notes_path": "other-app/RELEASE_NOTES.md",
+    "skip_locales": ["gl"]
+  }
+}

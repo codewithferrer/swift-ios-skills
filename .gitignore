@@ -1,0 +1,13 @@
+# Secrets and per-user config -- never commit these
+.env
+*.p8
+keys/
+asc-apps.json
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# macOS
+.DS_Store
