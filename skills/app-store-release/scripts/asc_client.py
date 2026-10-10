@@ -107,7 +107,25 @@ class AppStoreConnectClient:
 
     def _request(self, method: str, path: str, **kwargs) -> dict:
         url = path if path.startswith("http") else f"{API_BASE}{path}"
-        response = requests.request(method, url, headers=self._headers(), timeout=30, **kwargs)
+        # Reads are retried once on a dropped connection or a timeout: they are
+        # safe to repeat and Apple's edge occasionally closes a connection.
+        # Writes are never retried, so a request that may have gone through is
+        # not sent twice.
+        attempts = 2 if method.upper() == "GET" else 1
+        for attempt in range(attempts):
+            try:
+                response = requests.request(method, url, headers=self._headers(), timeout=30, **kwargs)
+                break
+            except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as exc:
+                if attempt + 1 < attempts:
+                    time.sleep(1)
+                    continue
+                raise AppStoreConnectError(
+                    f"{method} {url} failed: {type(exc).__name__}. Check the connection and try again."
+                    + ("" if method.upper() == "GET" else " The request may or may not have been applied.")
+                ) from exc
+            except requests.exceptions.RequestException as exc:
+                raise AppStoreConnectError(f"{method} {url} failed: {type(exc).__name__}: {exc}") from exc
         if response.status_code >= 400:
             raise AppStoreConnectError(
                 f"{method} {url} -> {response.status_code}: {response.text}",
@@ -623,3 +641,50 @@ class AppStoreConnectClient:
         """
         data = self._request("GET", f"/{kind}/{resource_id}/localizations", params={"limit": 200})
         return {item["attributes"]["locale"]: item for item in data.get("data", [])}
+
+    # -- Pre-submission reads --------------------------------------------------
+
+    def _optional(self, path: str, params: dict | None = None):
+        """`data` of a GET, or None when the resource does not exist (a 404
+        or an explicit null), as opposed to an error worth surfacing.
+        """
+        try:
+            return self._request("GET", path, params=params or {}).get("data")
+        except AppStoreConnectError as exc:
+            if exc.status_code == 404:
+                return None
+            raise
+
+    def get_version_build(self, version_id: str) -> dict | None:
+        """The build attached to a version, or None when none is."""
+        return self._optional(f"/appStoreVersions/{version_id}/build")
+
+    def get_review_detail(self, version_id: str) -> dict | None:
+        """App Review information (contact, demo account, notes), or None
+        when it has not been created yet.
+        """
+        return self._optional(f"/appStoreVersions/{version_id}/appStoreReviewDetail")
+
+    def get_app(self, app_id: str) -> dict:
+        return self._request("GET", f"/apps/{app_id}")["data"]
+
+    def app_info_has(self, app_info_id: str, relationship: str) -> bool:
+        """Whether an appInfo has a to-one relationship set, such as
+        "primaryCategory" or "ageRatingDeclaration".
+        """
+        return self._optional(f"/appInfos/{app_info_id}/{relationship}") is not None
+
+    def get_price_schedule(self, app_id: str) -> dict | None:
+        return self._optional(f"/apps/{app_id}/appPriceSchedule")
+
+    def list_accessibility_declarations(self, app_id: str) -> list[dict]:
+        return self._request("GET", f"/apps/{app_id}/accessibilityDeclarations", params={"limit": 20}).get("data", [])
+
+    def list_subscriptions(self, app_id: str) -> list[dict]:
+        """Every subscription of the app, across its subscription groups."""
+        groups = self._request("GET", f"/apps/{app_id}/subscriptionGroups", params={"limit": 50}).get("data", [])
+        found = []
+        for group in groups:
+            data = self._request("GET", f"/subscriptionGroups/{group['id']}/subscriptions", params={"limit": 50})
+            found.extend(data.get("data", []))
+        return found

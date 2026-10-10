@@ -1,5 +1,22 @@
 # Changelog
 
+## v0.4.0
+
+### Skills
+
+- `app-store-release`: `readiness.py` is a read-only pre-submission check. It
+  reports what App Store Connect would still ask for (build and export
+  compliance, listing text, screenshots, copyright, privacy policy URL,
+  category, age rating, content rights, App Review contact, price schedule),
+  keeps "could not be checked" apart from "passed", and lists what the API
+  cannot see (App Privacy answers, agreements, tax and banking).
+- `app-store-release`: `audit_localizations.py` no longer reports "What's New"
+  as missing on an app's first version.
+- `app-store-release`: network failures now surface as a clean error instead of
+  a traceback. Reads are retried once; writes never are.
+- `app-store-release`: `create_version.py` closes with the right next steps
+  for a first version.
+
 ## v0.3.0
 
 ### Skills

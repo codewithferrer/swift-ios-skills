@@ -125,7 +125,8 @@ def main() -> int:
         print(f"App Store Connect API error: {exc}", file=sys.stderr)
         return 1
 
-    print("\nDone. Fill in the What's New text (push_whats_new.py) and review the rest in App Store Connect.")
+    print("\nDone. Next: the listing text (push_metadata.py), What's New for an update (push_whats_new.py), "
+          "then readiness.py to see what is still missing before submitting.")
     return 0
 
 

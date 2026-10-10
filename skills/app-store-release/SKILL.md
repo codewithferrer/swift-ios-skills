@@ -1,6 +1,6 @@
 ---
 name: app-store-release
-description: Automate App Store Connect release chores through Apple's official API instead of the website: check where a version, build upload or review stands and why a build failed, draft release notes from git history and push them as localized "What's New", pull and push store listing text, find missing localizations (listing, in-app purchases, Game Center), create versions and attach builds, upload screenshots, submit for App Review, release approved versions, and read or reply to customer reviews. Use whenever the user wants to ship, release or submit an iOS app version, asks where a version or build stands or why a build is missing, or wants release notes, listing text, localization gaps, screenshots or review replies handled, even if they never mention the API or this skill by name.
+description: Automate App Store Connect release chores through Apple's official API instead of the website: check where a version, build upload or review stands, whether a version is ready to submit, and why a build failed, draft release notes from git history and push them as localized "What's New", pull and push store listing text, find missing localizations (listing, in-app purchases, Game Center), create versions and attach builds, upload screenshots, submit for App Review, release approved versions, and read or reply to customer reviews. Use whenever the user wants to ship, release or submit an iOS app version, asks where a version or build stands or why a build is missing, or wants to know what is missing before submitting, or wants release notes, listing text, localization gaps, screenshots or review replies handled, even if they never mention the API or this skill by name.
 compatibility: Python 3.9+ with requests and PyJWT[crypto]; needs network access to api.appstoreconnect.apple.com and an App Store Connect API key (App Manager role).
 ---
 
@@ -63,6 +63,7 @@ Read-only, safe to run at any time and worth running before acting:
 | Command | Answers |
 |---------|---------|
 | `status.py --app A` (or `--all`) | Newest versions and their review/release state, latest processed build, any upload since then that failed or got stuck (with Apple's error codes), latest Xcode Cloud run, reviews awaiting a reply. |
+| `readiness.py --app A [--version V]` | What App Store Connect would still ask for before this version can be submitted: build and export compliance, listing text, screenshots, copyright, privacy URL, category, age rating, content rights, App Review contact, price. Run it before step 5. |
 | `audit_localizations.py --app A` | Which listing fields, in-app purchases, Game Center leaderboards and achievements are missing a language the listing supports. |
 | `reviews.py list --app A [--unanswered] [--summary]` | Written customer reviews, newest first, with any reply under each. |
 | `pull_metadata.py --app A --version V` | Downloads the live listing text into the metadata folder. Bootstraps it and doubles as a backup. |
@@ -163,6 +164,13 @@ One block can serve several locales.
   the version is already `READY_FOR_SALE`; expect `409` for most fields.
 - **Text over Apple's character limits** (name/subtitle 30, keywords 100,
   promotional text 170, description 4000) is rejected locally before any call.
+- **`readiness.py` never turns "could not read" into a pass.** A section it cannot
+  load shows as "could not be checked" and the verdict becomes UNCLEAR, not READY.
+  It also cannot see App Privacy answers or agreements/tax/banking: say so when
+  reporting, so "READY" is not read as "will be approved".
+- **Screenshots: only the primary locale needs its own.** Other locales show the
+  primary one's when they have none, so `readiness.py` does not count them as
+  missing.
 - **"Stuck or failed" means newer than the latest processed build.** `status.py`
   ignores older failed uploads, which are history and say nothing about the
   current build.

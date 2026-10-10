@@ -217,12 +217,18 @@ class Coverage:
         return not self.missing
 
 
-def listing_field_coverage(localizations: dict, expected: set) -> list[Coverage]:
+def listing_field_coverage(localizations: dict, expected: set, whats_new: bool = True) -> list[Coverage]:
     """One row per listing field: which of the expected locales have a
     non-empty value. `localizations` maps locale -> API resource.
+
+    `whats_new=False` leaves that field out: an app's first version has no
+    "What's New", so an empty one there is not a gap.
     """
     rows = []
-    for attribute, label in (("description", "description"), ("keywords", "keywords"), ("whatsNew", "What's New")):
+    fields = [("description", "description"), ("keywords", "keywords")]
+    if whats_new:
+        fields.append(("whatsNew", "What's New"))
+    for attribute, label in fields:
         present = {
             locale for locale, res in localizations.items()
             if normalize(res["attributes"].get(attribute))

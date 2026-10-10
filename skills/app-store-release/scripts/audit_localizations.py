@@ -25,13 +25,11 @@ from asc_status import Coverage, app_info_field_coverage, listing_field_coverage
 
 
 def audit_app(client, app, version_string: str | None, locales: set | None) -> tuple[str, int]:
-    if version_string:
-        version = client.find_version(app.app_id, version_string)
-    else:
-        versions = client.list_versions(app.app_id, limit=1)
-        if not versions:
-            return f"{app.key}: no versions found.", 0
-        version = versions[0]
+    versions = client.list_versions(app.app_id, limit=50)
+    if not versions:
+        return f"{app.key}: no versions found.", 0
+    version = client.find_version(app.app_id, version_string) if version_string else versions[0]
+    first_release = len(versions) == 1
     shown = version["attributes"].get("versionString")
 
     listing = client.list_localizations(version["id"])
@@ -40,7 +38,7 @@ def audit_app(client, app, version_string: str | None, locales: set | None) -> t
     else:
         expected, source = set(listing) - app.skip_locales, f"(the locales on version {shown})"
 
-    rows: list[Coverage] = listing_field_coverage(listing, expected)
+    rows: list[Coverage] = listing_field_coverage(listing, expected, whats_new=not first_release)
 
     info = client.find_editable_app_info(app.app_id)
     if info is None:

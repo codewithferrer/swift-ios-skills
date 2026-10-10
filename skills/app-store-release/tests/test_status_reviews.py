@@ -143,6 +143,12 @@ class CoverageTests(unittest.TestCase):
         self.assertIn("region only: es-MX (has es-ES)", text)
         self.assertIn("1 gap(s), 1 region-only note(s), in 3 check(s)", text)
 
+    def test_whats_new_can_be_left_out_for_a_first_release(self):
+        locs = {"en-US": {"attributes": {"description": "d", "keywords": "k", "whatsNew": None}}}
+        names = [r.name for r in st.listing_field_coverage(locs, {"en-US"}, whats_new=False)]
+        self.assertEqual(names, ["description", "keywords"])
+        self.assertIn("What's New", [r.name for r in st.listing_field_coverage(locs, {"en-US"})])
+
     def test_listing_and_app_info_fields_ignore_blank_values(self):
         locs = {
             "en-US": {"attributes": {"description": "d", "keywords": "k", "whatsNew": "w", "name": "N", "subtitle": "S"}},
@@ -195,6 +201,39 @@ class ClientTests(unittest.TestCase):
 
         client._request = fake_request
         return client
+
+    def test_get_is_retried_once_after_a_dropped_connection(self):
+        import requests
+        from unittest import mock
+
+        client = object.__new__(asc_client.AppStoreConnectClient)
+        client._headers = lambda: {}
+        ok = mock.Mock(status_code=200, content=b"{}", json=lambda: {"data": []})
+        with mock.patch.object(asc_client.requests, "request",
+                               side_effect=[requests.exceptions.ConnectionError("closed"), ok]) as request, \
+                mock.patch.object(asc_client.time, "sleep"):
+            self.assertEqual(client._request("GET", "/apps"), {"data": []})
+        self.assertEqual(request.call_count, 2)
+
+    def test_network_failures_become_clean_errors_and_writes_are_not_retried(self):
+        import requests
+        from unittest import mock
+
+        client = object.__new__(asc_client.AppStoreConnectClient)
+        client._headers = lambda: {}
+        boom = requests.exceptions.ConnectionError("closed")
+        with mock.patch.object(asc_client.requests, "request", side_effect=boom) as request:
+            with self.assertRaises(asc_client.AppStoreConnectError) as ctx:
+                client._request("PATCH", "/appStoreVersionLocalizations/1", json={})
+        self.assertEqual(request.call_count, 1)
+        self.assertIn("may or may not have been applied", str(ctx.exception))
+
+        with mock.patch.object(asc_client.requests, "request", side_effect=boom) as request, \
+                mock.patch.object(asc_client.time, "sleep"):
+            with self.assertRaises(asc_client.AppStoreConnectError) as ctx:
+                client._request("GET", "/apps")
+        self.assertEqual(request.call_count, 2)
+        self.assertNotIn("may or may not", str(ctx.exception))
 
     def test_error_carries_status_code(self):
         self.assertEqual(asc_client.AppStoreConnectError("x", status_code=404).status_code, 404)

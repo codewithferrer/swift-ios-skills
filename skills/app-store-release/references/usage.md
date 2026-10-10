@@ -5,6 +5,29 @@ Exact commands for each script. Every script also has `--help`.
 Every script takes `--app` (omit it when the apps file has one app) and
 `--version` (the exact `versionString`, e.g. `1.9.2`).
 
+## Before submitting - `readiness.py`
+
+Read-only. Lists what App Store Connect would still ask for before the version
+can be submitted, in three groups: *needs fixing*, *could not be checked* and
+*passed*, plus a few advisory items.
+
+```bash
+python3 scripts/readiness.py --app my-app
+python3 scripts/readiness.py --app my-app --version 1.0.0
+python3 scripts/readiness.py --all --strict      # exit 1 when something must be fixed
+```
+
+It checks the attached build and its export compliance; description, keywords
+and support URL per locale (and What's New after the first release);
+screenshots in the primary locale (other locales fall back to it); copyright;
+privacy policy URL; primary category; age rating; content rights declaration;
+App Review contact details; and the price schedule. Advisory: subtitle,
+accessibility declarations, and in-app purchase / subscription states.
+
+A section the key cannot read is "could not be checked" and is never counted
+as a pass. App Privacy answers and agreements, tax and banking status are not
+exposed by the API, so the report lists them as things to check by hand.
+
 ## Checks - `status.py`, `audit_localizations.py`
 
 Both are read-only.
