@@ -13,6 +13,7 @@ Code and with any other agent that supports the format.
 | Skill | What it does |
 |-------|--------------|
 | [`app-store-release`](skills/app-store-release) | Automates App Store Connect release chores through Apple's API: status and build-failure diagnostics, pre-submission readiness check, localization audit, draft release notes from the git history, create a version and attach a build, push "What's New" and store listing text (with a diff before writing), upload screenshots, submit for review, release after approval, and read or reply to customer reviews. |
+| [`ios-aso`](skills/ios-aso) | iOS-only App Store optimization: audits the name, subtitle, keyword field and localizations against Apple's rules, finds wasted or repeated keywords across storefronts, packs a ranked keyword list into the 100-character field, and guides conversion work and measurement. Every claim is labelled as Apple-stated, observed or industry-reported. |
 
 ## Install
 
@@ -77,6 +78,10 @@ Skills here never depend on each other, so you can install any one alone.
 See [AGENTS.md](AGENTS.md). In short: create `skills/<name>/SKILL.md`, run
 `python3 scripts/skills_repo.py sync`, add a row to the table above, and run
 `python3 scripts/skills_repo.py validate`. CI runs the same check.
+
+## Credits
+
+`ios-aso` was shaped by reading the `aso` skill in [coreyhaines31/marketingskills](https://github.com/coreyhaines31/marketingskills) (MIT), which covers both stores. This one is iOS only, works on real App Store Connect fields instead of a scraped page, and checks Apple's figures against Apple's own pages.
 
 ## Trademarks
 

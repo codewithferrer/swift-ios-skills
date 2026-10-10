@@ -196,8 +196,8 @@ class AdvisoryTests(unittest.TestCase):
 class RenderTests(unittest.TestCase):
     def test_sections_and_the_not_visible_list(self):
         s = snapshot(build=None, price_schedule=rd)
-        text = rd.render("wakecraft", "1.0.0", "PREPARE_FOR_SUBMISSION", True, rd.evaluate(s))
-        self.assertIn("wakecraft  1.0.0  (PREPARE_FOR_SUBMISSION)  first release", text)
+        text = rd.render("my-app", "1.0.0", "PREPARE_FOR_SUBMISSION", True, rd.evaluate(s))
+        self.assertIn("my-app  1.0.0  (PREPARE_FOR_SUBMISSION)  first release", text)
         self.assertIn("Needs fixing before submitting (1)", text)
         self.assertIn("Could not be checked (1)", text)
         self.assertIn("Passed (", text)

@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.5.0
+
+### Skills
+
+- Add `ios-aso`: iOS-only App Store optimization. `aso_audit.py` checks a
+  metadata folder for budget use, format problems, keywords already covered by
+  the name or subtitle, and, per storefront, which localizations feed it and
+  where the same word is spent twice. `keyword_pack.py` fills the
+  100-character keyword field in priority order without repeats. References
+  cover how search works (every claim labelled Apple-stated, observed or
+  industry-reported), keyword strategy, conversion, and measurement.
 ## v0.4.0
 
 ### Skills
