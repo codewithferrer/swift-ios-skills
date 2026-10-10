@@ -5,6 +5,23 @@ Exact commands for each script. Every script also has `--help`.
 Every script takes `--app` (omit it when the apps file has one app) and
 `--version` (the exact `versionString`, e.g. `1.9.2`).
 
+## 0. Gather what changed - `collect_changes.py`
+
+Read-only: runs `git log`, never contacts App Store Connect, needs no
+credentials. Lists the commits since the latest tag, each marked by the kinds of
+files it touched, plus the project's version and build numbers and the previous
+notes for tone. Drafting from it is covered in `references/release-notes.md`.
+
+```bash
+python3 scripts/collect_changes.py --app my-app
+python3 scripts/collect_changes.py --app my-app --since release.1.9.0.20 --bodies
+python3 scripts/collect_changes.py --repo ~/code/my-app --tag-pattern 'release.*' --path Sources/
+```
+
+With `--app` it works in the git repository that holds the app's release notes
+file; with `--repo` it needs no apps file at all. `--keep-noise` stops it setting
+"Upgrade version"-style commits aside.
+
 ## 1. Create the version and attach a build - `create_version.py`
 
 ```bash

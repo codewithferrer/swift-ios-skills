@@ -25,6 +25,7 @@ from asc_common import (
     load_client_module,
     resolve_app,
 )
+from release_notes import check as check_release_notes
 from release_notes import parse as parse_release_notes
 
 
@@ -34,6 +35,7 @@ def main() -> int:
     parser.add_argument("--version", required=True, help="Exact marketing version string, e.g. 1.9.2")
     parser.add_argument("--dry-run", action="store_true", help="Parse and print, make no API calls")
     parser.add_argument("--yes", action="store_true", help="Skip the confirmation prompt")
+    parser.add_argument("--allow-emoji", action="store_true", help="Do not block text that contains emoji")
     args = parser.parse_args()
 
     try:
@@ -74,6 +76,13 @@ def main() -> int:
     if skipped:
         print(f"Skipped (listed in skip_locales): {', '.join(skipped)}")
     print()
+
+    problems = check_release_notes(pushable, args.allow_emoji)
+    if problems:
+        print("Problems found -- nothing was sent:", file=sys.stderr)
+        for problem in problems:
+            print(f"  {problem}", file=sys.stderr)
+        return 1
 
     if args.dry_run:
         for locale, text in sorted(pushable.items()):

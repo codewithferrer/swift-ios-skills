@@ -1,6 +1,6 @@
 ---
 name: app-store-release
-description: Automate the repetitive App Store Connect chores of an iOS app release through Apple's official API instead of the website - create a version and attach an uploaded build, push localized "What's New" text from a RELEASE_NOTES.md, pull and push the store listing text (name, subtitle, description, keywords, promotional text, support and marketing URLs), upload App Store screenshots, submit for App Review, and release an approved version. Use whenever the user wants to ship, release, or submit an iOS app version, update release notes, "What's New", description, keywords or subtitle on App Store Connect, back up or version-control the store listing, upload App Store screenshots, create a new App Store version, or publish an approved build, even if they never mention the API or this skill by name.
+description: Automate the repetitive App Store Connect chores of an iOS app release through Apple's official API instead of the website - create a version and attach an uploaded build, draft the release notes from the git history since the last release and push them as localized "What's New" text from a RELEASE_NOTES.md, pull and push the store listing text (name, subtitle, description, keywords, promotional text, support and marketing URLs), upload App Store screenshots, submit for App Review, and release an approved version. Use whenever the user wants to ship, release, or submit an iOS app version, write or update release notes, "What's New", description, keywords or subtitle on App Store Connect, back up or version-control the store listing, upload App Store screenshots, create a new App Store version, or publish an approved build, even if they never mention the API or this skill by name.
 compatibility: Python 3.9+ with requests and PyJWT[crypto]; needs network access to api.appstoreconnect.apple.com and an App Store Connect API key (App Manager role).
 ---
 
@@ -41,6 +41,7 @@ Never read, print, copy, or commit the contents of `.env` or the `.p8` file.
 
 | Step | Command | What it changes |
 |------|---------|-----------------|
+| 0 | `collect_changes.py --app A` then write `RELEASE_NOTES.md` | Read-only. Lists commits since the last tag, sorted by what they touch. You draft the notes from it, following `references/release-notes.md`. |
 | 1 | `create_version.py --app A --version V [--build N]` | Creates the version record (if missing) and attaches the processed build. Without `--build` it lists candidate builds. |
 | 2 | `push_whats_new.py --app A --version V` | Writes "What's New" for every locale in the app's release notes file. |
 | 3 | `push_metadata.py --app A --version V [--fields F] [--locales L]` | Writes the listing text files (description, keywords, name, subtitle, ...) that differ from App Store Connect. |
@@ -52,7 +53,8 @@ Never read, print, copy, or commit the contents of `.env` or the `.p8` file.
 `--app` can be omitted when the apps file lists a single app. Every script has
 `--help`.
 
-Typical order is 1 -> 2 -> 3 -> 4 -> 5, then 6 only after Apple approves.
+Typical order is 0 (draft the notes) -> 1 -> 2 -> 3 -> 4 -> 5, then 6 only after Apple
+approves. Step 0 can happen before or after step 1.
 Steps 2-4 need the version to still be editable (not yet approved/released).
 `pull_metadata.py` can run at any time.
 
@@ -69,6 +71,10 @@ to Apple.
 - **Back up before overwriting listing text.** Before the first
   `push_metadata.py` on an app, run `pull_metadata.py` so the previous text is
   on disk. Pushing replaces the text in App Store Connect and there is no undo.
+- **Drafted notes are not approved notes.** Show the user the text you wrote
+  and wait for their yes before `push_whats_new.py` sends it, even when they
+  asked you to "write and push" them: translations in languages they cannot
+  read are the part most worth a pause.
 - **Writes need a clear yes from the user in this conversation**, naming the
   app and version. A request like "get 1.9.3 ready" authorizes steps 1-4 and
   `--prepare`, not `--submit`.
@@ -115,6 +121,10 @@ One block can serve several locales.
   `pull_metadata.py`, `upload_screenshots.py` and `submit_for_review.py` fail
   with "No appStoreVersions found" until step 1 (or the web UI) created the
   version.
+- **"What's New" is checked before sending.** Over 4000 characters, or any
+  emoji, blocks `push_whats_new.py` (also in `--dry-run`, which makes it the
+  validator for freshly drafted notes). `--allow-emoji` overrides the emoji
+  check only.
 - **Build not found** means Apple has not finished processing it yet. Only
   builds in the `VALID` state are listed.
 - **Review submission is three API calls** (container, item, `submitted=true`).
@@ -149,6 +159,7 @@ release is above.
 | File | Read it when |
 |------|--------------|
 | `references/setup.md` | The user has no API key, credentials folder, apps file or virtualenv yet. |
+| `references/release-notes.md` | Writing or rewriting release notes: what to keep, style, translating, file structure. |
 | `references/usage.md` | You need the exact flags and examples for a script. |
 | `references/metadata-files.md` | Creating or editing the listing text folder: file names, limits, what each file maps to. |
 
