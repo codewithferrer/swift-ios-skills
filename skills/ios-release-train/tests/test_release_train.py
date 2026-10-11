@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import contextlib
 import io
+import os
 import shutil
 import subprocess
 import sys
@@ -176,6 +177,16 @@ class ChangelogTests(unittest.TestCase):
 @unittest.skipUnless(HAVE_GIT, "git is not installed")
 class CliTests(unittest.TestCase):
     def setUp(self):
+        # The tool under test runs git itself, so the identity has to be in the
+        # environment: a CI runner has no global git config, and a developer
+        # machine's (signing, hooks) should not leak into the test either.
+        env = mock.patch.dict(os.environ, {
+            "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@example.com",
+            "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@example.com",
+            "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1",
+        })
+        env.start()
+        self.addCleanup(env.stop)
         self._tmp = tempfile.TemporaryDirectory()
         self.root = Path(self._tmp.name)
         self.addCleanup(self._tmp.cleanup)
