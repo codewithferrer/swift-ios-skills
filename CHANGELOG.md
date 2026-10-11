@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.9.0
+
+### Skills
+
+- Add `ios-release-train`: the repository side of shipping an iOS version.
+  `release_train.py` reads the iOS app target's version and build from the
+  project file (tied to target and configuration, and confirmed against
+  `xcodebuild -showBuildSettings`) instead of taking the first match, runs the
+  guards a release tag needs (branch, clean tree, HEAD on origin, new tag,
+  higher build), bumps the build only on the targets that carry it, closes the
+  changelog, and creates and pushes just the release tag. Everything that
+  writes or pushes is a preview until `--write` or `--push` is given. Needs no
+  App Store Connect access.
 ## v0.8.0
 
 ### Skills
