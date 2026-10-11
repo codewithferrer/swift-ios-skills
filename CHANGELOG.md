@@ -1,5 +1,23 @@
 # Changelog
 
+## v0.11.0
+
+### Skills
+
+- Add `ios-analytics`: understand, audit and extend an iOS app's analytics.
+  `analytics_scan.py` reads the Swift sources (no build needed) and recovers
+  the whole chain from the SDK call through a private wrapper and a typed
+  facade to the views that call it. `inventory` lists events, parameters,
+  callers and the values callers pass; `coverage` finds screens, controls
+  (following the functions they call, `onChange` and property observers),
+  permission prompts, purchase flows, App Intents and caught errors that leave
+  no record, ranked by what a blind spot costs; `check` flags invalid or
+  reserved names, unbounded parameter values, personal data, double-counted
+  screens, the custom dimension budget and missing privacy manifests against
+  Google Analytics 4's documented limits; `plan` compares an event table in a
+  product document with the code and ranks the places each missing event
+  would go. Four references cover measurement planning, instrumentation
+  points on iOS, Firebase/GA4 rules with sources, and privacy.
 ## v0.10.0
 
 ### Skills
