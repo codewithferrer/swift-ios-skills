@@ -1,5 +1,21 @@
 # Changelog
 
+## v0.10.0
+
+### Skills
+
+- Add `ios-xcstrings`: check, translate and update Xcode String Catalogs.
+  `catalog.py audit` reports coverage per language and what is wrong
+  (placeholder mismatches, duplicate keys, plural forms a language needs,
+  literal percent signs a format string would read as a placeholder, and stale
+  keys cross-checked against the Swift sources, because Xcode marks keys stale
+  that are in use). `todo` gives the work list for a language with the
+  developer's comments, placeholders and the existing translations in a
+  reference language. `apply` validates a translation file and writes only the
+  keys in it, in the exact format the catalog already has, refusing to write
+  when the file cannot be reproduced byte for byte, and checking the result
+  with Xcode's `xcstringstool` where available. Translations are recorded as
+  `needs_review` unless told otherwise. Needs no network and no credentials.
 ## v0.9.0
 
 ### Skills
