@@ -36,3 +36,40 @@ metadata/
   in the web UI. Whether the API accepts that on a live version has not been
   verified here, so try it with `--dry-run` and a single locale first.
 
+## Version-level files: copyright and App Review information
+
+Two things belong to the version, not to a locale, so they live at the top of
+the metadata folder (the same layout fastlane uses):
+
+```
+metadata/
+  copyright.txt
+  review_information/
+    first_name.txt  last_name.txt  phone_number.txt  email_address.txt
+    demo_user.txt   demo_password.txt   notes.txt
+```
+
+| File | Goes to | Notes |
+|------|---------|-------|
+| `copyright.txt` | the version's copyright | Write it as Apple shows it, for example `2026 Your Name`. No copyright symbol is needed |
+| `first_name.txt`, `last_name.txt` | App Review contact name | Required to submit |
+| `phone_number.txt` | contact phone | Include the country code, for example `+34 600 000 000` |
+| `email_address.txt` | contact email | Checked for a plausible shape before sending |
+| `demo_user.txt`, `demo_password.txt` | demo account | Give both or neither. Giving both also marks the demo account as required |
+| `notes.txt` | notes for the reviewer | Up to 4000 characters. Say how to reach features that need hardware, a purchase or a permission |
+
+Push them with `push_metadata.py`, alone or with the rest:
+
+```bash
+python3 scripts/push_metadata.py --app my-app --version 1.0.0 --fields copyright,review_information
+```
+
+- An existing App Review record is updated field by field; if there is none, it
+  is created with everything provided.
+- **The demo password is a secret in a plain text file.** The script never
+  prints it and `pull_metadata.py` never writes it. It warns when the file is
+  inside a git repository and not ignored, so add it to `.gitignore` before the
+  first commit. Using a throwaway account for review avoids the issue.
+- A phone number without a country code only warns; a demo user without a
+  password, an email that is not an email, or notes over the limit stop the run
+  before any request is made.

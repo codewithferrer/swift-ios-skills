@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.8.0
+
+### Skills
+
+- `app-store-release`: `push_metadata.py` and `pull_metadata.py` now handle the
+  version's copyright (`copyright.txt`) and its App Review information
+  (`review_information/`: contact name, phone, email, demo account, notes), the
+  two things that block a first submission and that the skill could not write.
+  An existing App Review record is updated field by field, a missing one is
+  created. `--fields copyright,review_information` sends just those.
+- `app-store-release`: the demo account password is never printed and never
+  pulled, and the push warns when its file sits in a git repository without
+  being ignored. Bad input (a demo user without a password, a malformed email,
+  notes over the limit) is refused before any request.
 ## v0.7.1
 
 ### Skills

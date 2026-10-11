@@ -1,6 +1,6 @@
 ---
 name: app-store-release
-description: Automate App Store Connect release chores through Apple's official API instead of the website: check where a version, build upload or review stands, whether a version is ready to submit, and why a build failed, draft release notes from git history and push them as localized "What's New", pull and push store listing text, find missing localizations (listing, in-app purchases, Game Center), create versions and attach builds, upload screenshots, submit for App Review, release approved versions, and read or reply to customer reviews. Use whenever the user wants to ship, release or submit an iOS app version, asks where a version or build stands or why a build is missing, or wants to know what is missing before submitting, or wants release notes, listing text, localization gaps, screenshots or review replies handled, even if they never mention the API or this skill by name.
+description: Automate App Store Connect release chores through Apple's official API instead of the website: check where a version, build upload or review stands, whether a version is ready to submit, and why a build failed, draft release notes from git history and push them as localized "What's New", pull and push store listing text with the copyright and the App Review contact, find missing localizations (listing, in-app purchases, Game Center), create versions and attach builds, upload screenshots, submit for App Review, release approved versions, and read or reply to customer reviews. Use whenever the user wants to ship, release or submit an iOS app version, asks where a version or build stands or why a build is missing, or wants to know what is missing before submitting, or wants release notes, listing text, localization gaps, screenshots or review replies handled, even if they never mention the API or this skill by name.
 compatibility: Python 3.9+ with requests and PyJWT[crypto]; needs network access to api.appstoreconnect.apple.com and an App Store Connect API key (App Manager role).
 ---
 
@@ -44,7 +44,7 @@ Never read, print, copy, or commit the contents of `.env` or the `.p8` file.
 | 0 | `collect_changes.py --app A` then write `RELEASE_NOTES.md` | Read-only. Lists commits since the last tag, sorted by what they touch. You draft the notes from it, following `references/release-notes.md`. |
 | 1 | `create_version.py --app A --version V [--build N]` | Creates the version record (if missing) and attaches the processed build. Without `--build` it lists candidate builds. |
 | 2 | `push_whats_new.py --app A --version V` | Writes "What's New" for every locale in the app's release notes file. |
-| 3 | `push_metadata.py --app A --version V [--fields F] [--locales L]` | Writes the listing text files (description, keywords, name, subtitle, ...) that differ from App Store Connect. |
+| 3 | `push_metadata.py --app A --version V [--fields F] [--locales L]` | Writes the listing text files (description, keywords, name, subtitle, ...) that differ from App Store Connect, plus `copyright.txt` and the `review_information/` contact files. |
 | 4 | `upload_screenshots.py --app A --version V --locale L --dir D [--replace]` | Uploads a folder of PNGs to a screenshot set, in filename order. |
 | 5 | `submit_for_review.py --app A --version V --prepare` / `--submit` | `--prepare` builds a draft review submission; `--submit` sends it to Apple. |
 | 6 | `release_version.py --app A --version V --release` | Publishes an approved version that was created with manual release. |
@@ -162,6 +162,10 @@ One block can serve several locales.
   per-version ones, so a "skipped: name, subtitle" line is not a failure.
 - **A live version is mostly locked.** `push_metadata.py` prints a note when
   the version is already `READY_FOR_SALE`; expect `409` for most fields.
+- **Copyright and the App Review contact are per version, not per locale**, and
+  are required to submit. They live in `copyright.txt` and
+  `review_information/` (`references/metadata-files.md`). The demo password is
+  never printed or pulled; remind the user to keep that file out of git.
 - **Text over Apple's character limits** (name/subtitle 30, keywords 100,
   promotional text 170, description 4000) is rejected locally before any call.
 - **`readiness.py` never turns "could not read" into a pass.** A section it cannot

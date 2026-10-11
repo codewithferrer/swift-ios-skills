@@ -2,18 +2,24 @@
 """Push an app's store listing text from local metadata files (see
 asc_metadata.py for the layout) to App Store Connect: name, subtitle,
 privacy policy URL, description, keywords, promotional text, support URL and
-marketing URL, for every locale folder found.
+marketing URL, for every locale folder found. Also the version's copyright
+line (`copyright.txt`) and its App Review information (the files in
+`review_information/`: contact name, phone, email, demo account, notes).
 
 It compares each field with what App Store Connect holds and only writes the
 ones that differ. Text that is certainly over Apple's character limits is
 rejected before any API call. "What's New" is not handled here; see
 push_whats_new.py.
 
-Per-version fields (description, keywords, promotional text, URLs) need the
-version to exist and be editable. App-level fields (name, subtitle, privacy
-URL) need an app info in an editable state, which Apple exposes while a
-version is being prepared; when there is none they are reported and skipped,
-and the per-version fields are still pushed.
+Per-version fields (description, keywords, promotional text, URLs, copyright,
+review information) need the version to exist and be editable. App-level
+fields (name, subtitle, privacy URL) need an app info in an editable state,
+which Apple exposes while a version is being prepared; when there is none they
+are reported and skipped, and the per-version fields are still pushed.
+
+The demo account password is never printed. It lives in a plain text file, so
+the script warns when that file sits in a git repository without being
+ignored.
 
 Run pull_metadata.py first if you want a backup of what is live.
 
@@ -21,13 +27,16 @@ Usage:
     python push_metadata.py --app my-app --version 1.9.3 --dry-run
     python push_metadata.py --app my-app --version 1.9.3
     python push_metadata.py --app my-app --version 1.9.3 --fields promotional_text --locales en-US
+    python push_metadata.py --app my-app --version 1.0.0 --fields copyright,review_information
     python push_metadata.py --app my-app --version 1.9.3 --yes   # skip the confirmation prompt
 """
 
 from __future__ import annotations
 
 import argparse
+import subprocess
 import sys
+from pathlib import Path
 
 from asc_common import (
     ConfigError,
@@ -43,16 +52,38 @@ from asc_common import (
 )
 from asc_metadata import (
     APP_INFO,
+    COPYRIGHT_GROUP,
     FIELDS_BY_FILE,
+    GLOBAL_GROUPS,
+    REVIEW_GROUP,
     VERSION,
+    LocalMetadata,
     build_plan,
     check_limits,
     describe_change,
+    describe_global,
     normalize,
+    plan_globals,
+    read_global,
     read_local,
+    review_attributes,
 )
 
 LIVE_VERSION_STATES = {"READY_FOR_SALE", "READY_FOR_DISTRIBUTION"}
+
+
+def tracked_secret_warning(path: Path) -> str | None:
+    """A warning when `path` is inside a git repository and not ignored."""
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(path.parent), "check-ignore", "-q", str(path)], capture_output=True
+        )
+    except OSError:
+        return None
+    if result.returncode == 1:  # inside a repository, and not ignored
+        return (f"{display_path(path)} holds a password and is not ignored by git, so a commit would "
+                "include it. Add it to .gitignore.")
+    return None
 
 
 def main() -> int:
@@ -73,20 +104,31 @@ def main() -> int:
         print(exc, file=sys.stderr)
         return 1
 
-    try:
-        local = read_local(source, only_locales, app.skip_locales, only_fields)
-    except FileNotFoundError as exc:
-        print(exc, file=sys.stderr)
+    # --fields may name locale fields, the two version-level groups, or both.
+    groups = set(GLOBAL_GROUPS)
+    locale_fields = (only_fields - groups) if only_fields is not None else None
+    want_locales = only_fields is None or bool(locale_fields)
+    want_copyright = only_fields is None or COPYRIGHT_GROUP in only_fields
+    want_review = only_fields is None or REVIEW_GROUP in only_fields
+
+    if not source.is_dir():
+        print(f"{source} is not a directory -- see references/metadata-files.md for the layout.", file=sys.stderr)
         return 1
-    if not local.texts:
+    local = read_local(source, only_locales, app.skip_locales, locale_fields) if want_locales else LocalMetadata()
+    extras = read_global(source)
+    copyright_text = extras.copyright if want_copyright else None
+    review = extras.review if want_review else {}
+    review_attrs, review_problems, review_warnings = review_attributes(review)
+
+    if not local.texts and copyright_text is None and not review_attrs:
         print(f"No metadata files found in {source} for this selection.", file=sys.stderr)
-        for note in local.notes:
+        for note in local.notes + extras.notes:
             print(f"  {note}", file=sys.stderr)
         return 1
 
-    problems = check_limits(local.texts)
+    problems = check_limits(local.texts) + review_problems
     if problems:
-        print("Over Apple's character limits -- nothing was sent:", file=sys.stderr)
+        print("Cannot send these -- nothing was sent:", file=sys.stderr)
         for problem in problems:
             print(f"  {problem}", file=sys.stderr)
         return 1
@@ -100,7 +142,7 @@ def main() -> int:
     try:
         client = asc.AppStoreConnectClient()
         version = client.find_version(app.app_id, args.version)
-        version_locs = client.list_localizations(version["id"])
+        version_locs = client.list_localizations(version["id"]) if local.texts else {}
         attributes = version["attributes"]
         version_state = attributes.get("appStoreState") or attributes.get("appVersionState")
 
@@ -117,9 +159,24 @@ def main() -> int:
 
         plan = build_plan(local.texts, version_locs, info_locs)
 
+        review_detail = client.get_review_detail(version["id"]) if review_attrs else None
+        global_changes, global_unchanged = plan_globals(
+            copyright_text,
+            attributes.get("copyright"),
+            review_attrs,
+            review_detail["attributes"] if review_detail else None,
+        )
+
         print(f"App: {app.key} (id {app.app_id})")
         print(f"Version: {args.version} (state: {version_state})")
-        print(f"Source: {display_path(source)} ({len(local.texts)} locale(s))")
+        parts = []
+        if local.texts:
+            parts.append(f"{len(local.texts)} locale(s)")
+        if copyright_text is not None:
+            parts.append("copyright")
+        if review_attrs:
+            parts.append("App Review information")
+        print(f"Source: {display_path(source)} ({', '.join(parts)})")
         if version_state in LIVE_VERSION_STATES:
             print("Note: this version is already live, so Apple will likely refuse changes to most fields.")
         print()
@@ -130,23 +187,35 @@ def main() -> int:
                 print(f"  {problem}", file=sys.stderr)
             return 1
 
+        nothing_to_do = not plan.changes and not global_changes
         if plan.changes:
             print(f"Changes ({len(plan.changes)}):")
             for change in plan.changes:
                 suffix = "  [new locale]" if change.kind == "new locale" else ""
                 print(f"  {change.locale:<8} {change.field.file:<17} {describe_change(change)}{suffix}")
-        else:
+        if global_changes:
+            print(f"Version info and App Review information ({len(global_changes)}):")
+            for change in global_changes:
+                where = "copyright" if change.group == COPYRIGHT_GROUP else f"review: {change.label}"
+                print(f"  {where:<26} {describe_global(change)}")
+        if nothing_to_do:
             print("No changes: everything already matches App Store Connect.")
-        print(f"Unchanged: {len(plan.unchanged)} field(s).")
+        print(f"Unchanged: {len(plan.unchanged) + global_unchanged} field(s).")
         if plan.unavailable:
             names = sorted({spec.file for _, spec in plan.unavailable})
             print(f"Skipped: {', '.join(names)} -- no app info in an editable state "
                   "(one appears while a version is being prepared).")
-        for note in local.notes:
+        for note in local.notes + extras.notes:
             print(f"Note: {note}")
+        for warning in review_warnings:
+            print(f"Warning: {warning}")
+        if "demo_password" in review and "demo_password" in extras.paths:
+            secret_warning = tracked_secret_warning(extras.paths["demo_password"])
+            if secret_warning:
+                print(f"Warning: {secret_warning}")
         print()
 
-        if not plan.changes:
+        if nothing_to_do:
             return 0
         if args.dry_run:
             print("Dry run -- no changes made.")
@@ -190,9 +259,22 @@ def main() -> int:
             if already:
                 line += f" ({', '.join(already)} already matched)"
             print(line)
+
+        copyright_change = [c for c in global_changes if c.group == COPYRIGHT_GROUP]
+        if copyright_change:
+            client.update_version(version["id"], {"copyright": copyright_change[0].new})
+            print("Version info: wrote copyright")
+        review_pending = {c.attribute: c.new for c in global_changes if c.group == REVIEW_GROUP}
+        if review_pending:
+            if review_detail:
+                client.update_review_detail(review_detail["id"], review_pending)
+                print(f"App Review information: updated {len(review_pending)} field(s)")
+            else:
+                client.create_review_detail(version["id"], review_attrs)
+                print(f"App Review information: created with {len(review_attrs)} field(s)")
     except asc.AppStoreConnectError as exc:
         print(f"App Store Connect API error: {exc}", file=sys.stderr)
-        print("Locales listed above were already written; the rest were not.", file=sys.stderr)
+        print("Anything listed above was already written; the rest was not.", file=sys.stderr)
         return 1
 
     print("\nDone. Review the listing in App Store Connect before submitting for review.")

@@ -214,3 +214,141 @@ def remote_texts(
             if value:
                 texts.setdefault(locale, {})[spec.file] = value
     return texts
+
+
+# -- Version-level extras that are not per locale -----------------------------------
+#
+# Same layout as fastlane's `deliver`:
+#
+#     metadata/
+#       copyright.txt                  the version's copyright line
+#       review_information/
+#         first_name.txt  last_name.txt  phone_number.txt  email_address.txt
+#         demo_user.txt  demo_password.txt  notes.txt
+
+COPYRIGHT_GROUP = "copyright"
+REVIEW_GROUP = "review_information"
+GLOBAL_GROUPS = (COPYRIGHT_GROUP, REVIEW_GROUP)
+
+# file stem -> appStoreReviewDetails attribute
+REVIEW_FIELDS = {
+    "first_name": "contactFirstName",
+    "last_name": "contactLastName",
+    "phone_number": "contactPhone",
+    "email_address": "contactEmail",
+    "demo_user": "demoAccountName",
+    "demo_password": "demoAccountPassword",
+    "notes": "notes",
+}
+# Never printed, never written back into files by a pull.
+SECRET_REVIEW_FIELDS = frozenset({"demo_password"})
+REVIEW_NOTES_LIMIT = 4000
+
+
+@dataclass
+class GlobalMetadata:
+    copyright: str | None = None
+    review: dict = field(default_factory=dict)   # file stem -> text
+    notes: list = field(default_factory=list)
+    paths: dict = field(default_factory=dict)    # file stem -> Path, for checks on the files themselves
+
+
+def read_global(directory: Path) -> GlobalMetadata:
+    result = GlobalMetadata()
+    copyright_file = directory / f"{COPYRIGHT_GROUP}.txt"
+    if copyright_file.is_file():
+        text = normalize(copyright_file.read_text(encoding="utf-8"))
+        if text:
+            result.copyright = text
+        else:
+            result.notes.append("copyright.txt: empty, ignored")
+
+    review_dir = directory / REVIEW_GROUP
+    if review_dir.is_dir():
+        for path in sorted(review_dir.glob("*.txt")):
+            if path.stem not in REVIEW_FIELDS:
+                result.notes.append(f"{REVIEW_GROUP}/{path.name}: not a review information field, ignored")
+                continue
+            text = normalize(path.read_text(encoding="utf-8"))
+            if not text:
+                result.notes.append(f"{REVIEW_GROUP}/{path.name}: empty, ignored")
+                continue
+            result.review[path.stem] = text
+            result.paths[path.stem] = path
+    return result
+
+
+def review_attributes(review: dict) -> tuple[dict, list[str], list[str]]:
+    """(API attributes, blocking problems, warnings) for the review contact
+    files. The demo account is only marked as required when both its name and
+    its password are given.
+    """
+    attributes: dict = {REVIEW_FIELDS[stem]: text for stem, text in review.items() if stem in REVIEW_FIELDS}
+    problems, warnings = [], []
+
+    user, password = review.get("demo_user"), review.get("demo_password")
+    if bool(user) != bool(password):
+        problems.append(f"{REVIEW_GROUP}: demo_user.txt and demo_password.txt must be given together")
+    elif user and password:
+        attributes["demoAccountRequired"] = True
+
+    email = review.get("email_address")
+    if email and not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email):
+        problems.append(f"{REVIEW_GROUP}/email_address.txt: \"{email}\" does not look like an email address")
+    notes = review.get("notes")
+    if notes and len(notes) > REVIEW_NOTES_LIMIT:
+        problems.append(f"{REVIEW_GROUP}/notes.txt: {len(notes)} characters, the limit is {REVIEW_NOTES_LIMIT}")
+    phone = review.get("phone_number")
+    if phone and not phone.startswith("+"):
+        warnings.append(f"{REVIEW_GROUP}/phone_number.txt: include the country code, for example +34 600 000 000")
+    return attributes, problems, warnings
+
+
+@dataclass(frozen=True)
+class GlobalChange:
+    group: str                  # COPYRIGHT_GROUP or REVIEW_GROUP
+    label: str                  # what to show
+    attribute: str              # API attribute
+    old: object
+    new: object
+    secret: bool = False
+
+
+def plan_globals(
+    copyright_text: str | None,
+    current_copyright: str | None,
+    review_attributes_: dict,
+    current_review: dict | None,
+) -> tuple[list[GlobalChange], int]:
+    """Changes needed for the copyright line and the review contact, and how
+    many provided values already match. `current_review` is the attributes of
+    the existing App Review information, or None when it does not exist yet.
+    """
+    changes: list[GlobalChange] = []
+    unchanged = 0
+    if copyright_text is not None:
+        if normalize(current_copyright) != copyright_text:
+            changes.append(GlobalChange(COPYRIGHT_GROUP, "copyright", "copyright", current_copyright, copyright_text))
+        else:
+            unchanged += 1
+
+    by_attribute = {attr: stem for stem, attr in REVIEW_FIELDS.items()}
+    by_attribute["demoAccountRequired"] = "demo_account_required"
+    for attribute, new in review_attributes_.items():
+        label = by_attribute[attribute]
+        old = (current_review or {}).get(attribute)
+        same = (bool(old) is True) if isinstance(new, bool) else (normalize(old) == new)
+        if same and current_review is not None:
+            unchanged += 1
+        else:
+            changes.append(GlobalChange(REVIEW_GROUP, label, attribute, old, new,
+                                        secret=label in SECRET_REVIEW_FIELDS))
+    return changes, unchanged
+
+
+def describe_global(change: GlobalChange) -> str:
+    if change.secret:
+        return "(set)" if change.old else "(empty) -> (set)"
+    old = "(empty)" if change.old in (None, "") else f"\"{change.old}\""
+    new = change.new if isinstance(change.new, bool) else f"\"{change.new}\""
+    return f"{old} -> {new}"

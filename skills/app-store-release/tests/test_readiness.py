@@ -21,7 +21,7 @@ import asc_readiness as rd  # noqa: E402
 READY = {
     "version_string": "1.0.0",
     "first_release": True,
-    "copyright": "2026 Daniel Ferrer",
+    "copyright": "2026 Example Ltd",
     "primary_locale": "en-US",
     "build": {"version": "3", "processingState": "VALID", "usesNonExemptEncryption": False},
     "latest_build": {"version": "3", "processingState": "VALID"},

@@ -688,3 +688,36 @@ class AppStoreConnectClient:
             data = self._request("GET", f"/subscriptionGroups/{group['id']}/subscriptions", params={"limit": 50})
             found.extend(data.get("data", []))
         return found
+
+    # -- Version-level writes -----------------------------------------------------
+
+    def update_version(self, version_id: str, attributes: dict) -> None:
+        """PATCH attributes of an appStoreVersions record, such as `copyright`."""
+        self._request(
+            "PATCH",
+            f"/appStoreVersions/{version_id}",
+            json={"data": {"type": "appStoreVersions", "id": version_id, "attributes": attributes}},
+        )
+
+    def create_review_detail(self, version_id: str, attributes: dict) -> dict:
+        data = self._request(
+            "POST",
+            "/appStoreReviewDetails",
+            json={
+                "data": {
+                    "type": "appStoreReviewDetails",
+                    "attributes": attributes,
+                    "relationships": {
+                        "appStoreVersion": {"data": {"type": "appStoreVersions", "id": version_id}}
+                    },
+                }
+            },
+        )
+        return data["data"]
+
+    def update_review_detail(self, detail_id: str, attributes: dict) -> None:
+        self._request(
+            "PATCH",
+            f"/appStoreReviewDetails/{detail_id}",
+            json={"data": {"type": "appStoreReviewDetails", "id": detail_id, "attributes": attributes}},
+        )

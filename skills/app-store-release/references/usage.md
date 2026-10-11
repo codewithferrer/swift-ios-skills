@@ -144,6 +144,9 @@ python3 scripts/push_metadata.py --app my-app --version 1.9.3 --fields promotion
   version is being prepared; when there is none they are reported as skipped and
   the per-version fields are still pushed.
 - `--locales` and `--fields` narrow a run. Apps-file `skip_locales` apply too.
+- `copyright.txt` and `review_information/` (App Review contact, demo account,
+  notes) are pushed and pulled by the same scripts; see `metadata-files.md`.
+  `--fields copyright,review_information` sends just those.
 
 ## 4. Upload screenshots - `upload_screenshots.py`
 

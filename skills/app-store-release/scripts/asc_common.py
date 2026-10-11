@@ -180,14 +180,13 @@ def selected_locales(args) -> set | None:
 
 
 def selected_fields(args) -> set | None:
-    from asc_metadata import FIELDS_BY_FILE
+    from asc_metadata import FIELDS_BY_FILE, GLOBAL_GROUPS
 
     fields = _csv_set(args.fields)
-    unknown = sorted((fields or set()) - set(FIELDS_BY_FILE))
+    valid = list(FIELDS_BY_FILE) + list(GLOBAL_GROUPS)
+    unknown = sorted((fields or set()) - set(valid))
     if unknown:
-        raise ConfigError(
-            f"Unknown field(s): {', '.join(unknown)}. Valid fields: {', '.join(FIELDS_BY_FILE)}"
-        )
+        raise ConfigError(f"Unknown field(s): {', '.join(unknown)}. Valid fields: {', '.join(valid)}")
     return fields
 
 
