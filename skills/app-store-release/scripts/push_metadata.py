@@ -48,6 +48,7 @@ from asc_metadata import (
     build_plan,
     check_limits,
     describe_change,
+    normalize,
     read_local,
 )
 
@@ -165,13 +166,30 @@ def main() -> int:
                     client.update_localization(version_locs[locale]["id"], version_attrs)
                 else:
                     client.create_localization(version["id"], locale, version_attrs)
+            already = []
             if info_attrs:
+                if locale not in info_locs:
+                    # Creating a version localization for a new locale makes
+                    # App Store Connect create the app info localization too,
+                    # copying the primary language's name and subtitle. Look
+                    # again before trying to create it ourselves, which would
+                    # fail with a 409.
+                    info_locs = client.list_app_info_localizations(app_info_id)
                 if locale in info_locs:
-                    client.update_app_info_localization(info_locs[locale]["id"], info_attrs)
+                    current = info_locs[locale]["attributes"]
+                    pending = {k: v for k, v in info_attrs.items() if normalize(current.get(k)) != normalize(v)}
+                    already = sorted(c.field.file for c in plan.changes
+                                     if c.locale == locale and c.field.level == APP_INFO
+                                     and c.field.attribute not in pending)
+                    if pending:
+                        client.update_app_info_localization(info_locs[locale]["id"], pending)
                 else:
                     client.create_app_info_localization(app_info_id, locale, info_attrs)
-            written = sorted(c.field.file for c in plan.changes if c.locale == locale)
-            print(f"{locale}: wrote {', '.join(written)}")
+            written = sorted(c.field.file for c in plan.changes if c.locale == locale and c.field.file not in already)
+            line = f"{locale}: wrote {', '.join(written)}" if written else f"{locale}: nothing left to write"
+            if already:
+                line += f" ({', '.join(already)} already matched)"
+            print(line)
     except asc.AppStoreConnectError as exc:
         print(f"App Store Connect API error: {exc}", file=sys.stderr)
         print("Locales listed above were already written; the rest were not.", file=sys.stderr)

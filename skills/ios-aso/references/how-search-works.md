@@ -67,6 +67,15 @@ few rows, as published:
 | Spain | es-ES | ca, en-GB |
 | Mexico | es-MX | en-GB |
 | Germany, France, Italy, Brazil, Netherlands | local language | en-GB |
+| Argentina, Colombia, Chile, Peru (and most of Latin America) | **es-MX** | en-GB |
+| Austria | de-DE | en-GB |
+| Switzerland | de-DE | en-GB, fr-FR, it |
+| United Kingdom, Ireland | **en-GB** | none |
+| United Arab Emirates | **en-GB** | ar-SA |
+| Egypt | **en-GB** | ar-SA, fr-FR |
+| Singapore | **en-GB** | zh-Hans |
+| Belgium | **en-GB** | nl-NL, fr-FR |
+| Taiwan, Hong Kong | zh-Hant | en-GB |
 | Japan | ja | en-US |
 
 The full set is in `references/storefront-locales.json` (a subset: extend it
@@ -80,9 +89,14 @@ multiplication of keyword space as likely, not certain.
 
 Two consequences:
 
-1. One localization can serve several storefronts. en-GB appears as an
-   additional language for most non-English storefronts, so an en-GB keyword
-   field gives English keywords to many markets at once.
+1. One localization can serve several storefronts. **es-MX is the default of
+   most of Latin America**, so a Mexican Spanish listing is the Spanish listing
+   for Argentina, Colombia, Chile and Peru as well, and it is worth writing
+   for all of them, not only for Mexico. **en-GB is the default of six
+   storefronts** (the United Kingdom, Ireland, the United Arab Emirates, Egypt,
+   Singapore and Belgium) and an additional language for most non-English
+   ones, so without an en-GB localization those markets fall back to
+   whichever English you have.
 2. A word is wasted if it appears in two localizations that feed the same
    storefront. `scripts/aso_audit.py` finds those.
 

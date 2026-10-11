@@ -3,20 +3,224 @@
   "retrieved": "2026-10-10",
   "note": "A subset of Apple's table, copied as published. The page lists every storefront; add rows from it as you need them. Apple describes these as the languages supported for the storefront; that the keywords of the additional localizations are also used for search there is how the industry reads the table, not a sentence on Apple's page.",
   "storefronts": {
-    "US": {"name": "United States",  "default": "en-US", "additional": ["ar-SA", "zh-Hans", "zh-Hant", "fr-FR", "ko", "pt-BR", "ru", "es-MX", "vi"]},
-    "ES": {"name": "Spain",          "default": "es-ES", "additional": ["ca", "en-GB"]},
-    "MX": {"name": "Mexico",         "default": "es-MX", "additional": ["en-GB"]},
-    "GB": {"name": "United Kingdom", "default": "en-GB", "additional": []},
-    "CA": {"name": "Canada",         "default": "en-CA", "additional": ["fr-CA"]},
-    "AU": {"name": "Australia",      "default": "en-AU", "additional": ["en-GB"]},
-    "DE": {"name": "Germany",        "default": "de-DE", "additional": ["en-GB"]},
-    "FR": {"name": "France",         "default": "fr-FR", "additional": ["en-GB"]},
-    "IT": {"name": "Italy",          "default": "it",    "additional": ["en-GB"]},
-    "JP": {"name": "Japan",          "default": "ja",    "additional": ["en-US"]},
-    "KR": {"name": "South Korea",    "default": "ko",    "additional": ["en-GB"]},
-    "CN": {"name": "China mainland", "default": "zh-Hans", "additional": ["en-GB"]},
-    "BR": {"name": "Brazil",         "default": "pt-BR", "additional": ["en-GB"]},
-    "SA": {"name": "Saudi Arabia",   "default": "ar-SA", "additional": ["en-GB"]},
-    "NL": {"name": "Netherlands",    "default": "nl-NL", "additional": ["en-GB"]}
+    "US": {
+      "name": "United States",
+      "default": "en-US",
+      "additional": [
+        "ar-SA",
+        "zh-Hans",
+        "zh-Hant",
+        "fr-FR",
+        "ko",
+        "pt-BR",
+        "ru",
+        "es-MX",
+        "vi"
+      ]
+    },
+    "ES": {
+      "name": "Spain",
+      "default": "es-ES",
+      "additional": [
+        "ca",
+        "en-GB"
+      ]
+    },
+    "MX": {
+      "name": "Mexico",
+      "default": "es-MX",
+      "additional": [
+        "en-GB"
+      ]
+    },
+    "GB": {
+      "name": "United Kingdom",
+      "default": "en-GB",
+      "additional": []
+    },
+    "CA": {
+      "name": "Canada",
+      "default": "en-CA",
+      "additional": [
+        "fr-CA"
+      ]
+    },
+    "AU": {
+      "name": "Australia",
+      "default": "en-AU",
+      "additional": [
+        "en-GB"
+      ]
+    },
+    "DE": {
+      "name": "Germany",
+      "default": "de-DE",
+      "additional": [
+        "en-GB"
+      ]
+    },
+    "FR": {
+      "name": "France",
+      "default": "fr-FR",
+      "additional": [
+        "en-GB"
+      ]
+    },
+    "IT": {
+      "name": "Italy",
+      "default": "it",
+      "additional": [
+        "en-GB"
+      ]
+    },
+    "JP": {
+      "name": "Japan",
+      "default": "ja",
+      "additional": [
+        "en-US"
+      ]
+    },
+    "KR": {
+      "name": "South Korea",
+      "default": "ko",
+      "additional": [
+        "en-GB"
+      ]
+    },
+    "CN": {
+      "name": "China mainland",
+      "default": "zh-Hans",
+      "additional": [
+        "en-GB"
+      ]
+    },
+    "BR": {
+      "name": "Brazil",
+      "default": "pt-BR",
+      "additional": [
+        "en-GB"
+      ]
+    },
+    "SA": {
+      "name": "Saudi Arabia",
+      "default": "ar-SA",
+      "additional": [
+        "en-GB"
+      ]
+    },
+    "NL": {
+      "name": "Netherlands",
+      "default": "nl-NL",
+      "additional": [
+        "en-GB"
+      ]
+    },
+    "AR": {
+      "name": "Argentina",
+      "default": "es-MX",
+      "additional": [
+        "en-GB"
+      ]
+    },
+    "CO": {
+      "name": "Colombia",
+      "default": "es-MX",
+      "additional": [
+        "en-GB"
+      ]
+    },
+    "CL": {
+      "name": "Chile",
+      "default": "es-MX",
+      "additional": [
+        "en-GB"
+      ]
+    },
+    "PE": {
+      "name": "Peru",
+      "default": "es-MX",
+      "additional": [
+        "en-GB"
+      ]
+    },
+    "AT": {
+      "name": "Austria",
+      "default": "de-DE",
+      "additional": [
+        "en-GB"
+      ]
+    },
+    "CH": {
+      "name": "Switzerland",
+      "default": "de-DE",
+      "additional": [
+        "en-GB",
+        "fr-FR",
+        "it"
+      ]
+    },
+    "AE": {
+      "name": "United Arab Emirates",
+      "default": "en-GB",
+      "additional": [
+        "ar-SA"
+      ]
+    },
+    "EG": {
+      "name": "Egypt",
+      "default": "en-GB",
+      "additional": [
+        "ar-SA",
+        "fr-FR"
+      ]
+    },
+    "IE": {
+      "name": "Ireland",
+      "default": "en-GB",
+      "additional": []
+    },
+    "NZ": {
+      "name": "New Zealand",
+      "default": "en-AU",
+      "additional": [
+        "en-GB"
+      ]
+    },
+    "SG": {
+      "name": "Singapore",
+      "default": "en-GB",
+      "additional": [
+        "zh-Hans"
+      ]
+    },
+    "BE": {
+      "name": "Belgium",
+      "default": "en-GB",
+      "additional": [
+        "nl-NL",
+        "fr-FR"
+      ]
+    },
+    "PT": {
+      "name": "Portugal",
+      "default": "pt-PT",
+      "additional": [
+        "en-GB"
+      ]
+    },
+    "TW": {
+      "name": "Taiwan",
+      "default": "zh-Hant",
+      "additional": [
+        "en-GB"
+      ]
+    },
+    "HK": {
+      "name": "Hong Kong",
+      "default": "zh-Hant",
+      "additional": [
+        "en-GB"
+      ]
+    }
   }
 }

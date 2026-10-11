@@ -49,8 +49,10 @@ CJK_RE = re.compile(r"[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uac00-\ud7af]")
 STOREFRONT_LANGUAGE = {
     "us": "EN", "gb": "EN", "ca": "EN", "au": "EN", "es": "ES", "mx": "ES", "jp": "JA", "kr": "KO", "cn": "ZH",
     "tw": "ZH", "hk": "ZH", "sa": "AR", "ae": "AR", "de": "DE", "fr": "FR", "it": "IT", "br": "PT", "pt": "PT",
-    "nl": "NL", "ru": "RU", "tr": "TR", "in": "EN",
+    "nl": "NL", "ru": "RU", "tr": "TR", "in": "EN", "ar": "ES", "co": "ES", "cl": "ES", "pe": "ES",
+    "at": "DE", "ch": "DE", "ie": "EN", "nz": "EN", "sg": "EN",
 }
+# Note: "ar" here is Argentina (a storefront), not the Arabic language code.
 
 # An app ranks "above its weight" when it is in the top results of a term
 # with at most this fraction of the cohort's median number of ratings.

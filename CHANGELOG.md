@@ -1,5 +1,22 @@
 # Changelog
 
+## v0.7.1
+
+### Skills
+
+- `ios-aso`: the storefront table grows from 15 to 30 rows, taken from Apple's
+  App Store localizations page, and now covers Latin America, the German-speaking
+  markets, the Gulf and Egypt, Ireland, Singapore, Belgium, Taiwan and Hong Kong.
+  It records that es-MX is the default of most of Latin America and en-GB the
+  default of six storefronts, which changes which localization is worth writing.
+- `ios-aso`: `research.py markets` knows the language of the Latin American
+  storefronts, so "local lang" is no longer `n/a` for them.
+- `app-store-release`: `push_metadata.py` now handles adding a new locale. App
+  Store Connect creates the app info localization by itself, copying the primary
+  language's name and subtitle, as soon as the version localization exists; the
+  push used to try to create it again and failed with a 409 after the version
+  part had already been written. It now looks again, updates only what differs,
+  and reports what already matched. Found by creating a locale on a real app.
 ## v0.7.0
 
 ### Skills
