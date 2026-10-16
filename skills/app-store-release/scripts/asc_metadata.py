@@ -56,6 +56,10 @@ FIELDS_BY_FILE = {f.file: f for f in FIELDS}
 # `screenshots/` and `review_information/` directories out of the way.
 LOCALE_DIR_RE = re.compile(r"^[a-z]{2,3}(-[A-Za-z0-9]{2,4})*$")
 
+# Folders of the purchase texts (asc_purchases.py), which share this metadata
+# folder but are none of this module's business.
+PURCHASE_FOLDERS = frozenset({"in_app_purchases", "subscriptions", "subscription_groups"})
+
 
 def normalize(text: str | None) -> str:
     """Comparison form: Windows line endings folded, surrounding whitespace
@@ -87,6 +91,8 @@ def read_local(
     ignored_dirs = []
     for locale_dir in sorted(p for p in directory.iterdir() if p.is_dir()):
         locale = locale_dir.name
+        if locale in PURCHASE_FOLDERS:
+            continue  # push_purchases.py reads these
         if not LOCALE_DIR_RE.match(locale):
             ignored_dirs.append(locale)
             continue

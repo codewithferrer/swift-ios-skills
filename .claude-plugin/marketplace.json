@@ -5,14 +5,14 @@
   },
   "metadata": {
     "description": "Agent skills for iOS and Swift development",
-    "version": "0.11.0"
+    "version": "0.12.0"
   },
   "plugins": [
     {
       "name": "app-store-release",
       "source": "./",
-      "description": "Automate App Store Connect release chores through Apple's official API instead of the website: check where a version, build upload or review stands, whether a version is ready to submit, and why a build failed, draft release notes from git history and push them as localized \"What's New\", pull and push store listing text with the copyright and the App Review contact, find missing localizations (listing, in-app purchases, Game Center), create versions and attach builds, upload screenshots, submit for App Review, release approved versions, and read or reply to customer reviews. Use whenever the user wants to ship, release or submit an iOS app version, asks where a version or build stands or why a build is missing, or wants to know what is missing before submitting, or wants release notes, listing text, localization gaps, screenshots or review replies handled, even if they never mention the API or this skill by name.",
-      "version": "0.11.0",
+      "description": "Automate App Store Connect release chores through Apple's official API instead of the website: check where a version, build upload or review stands, whether a version is ready to submit, and why a build failed, draft release notes from git history and push them as localized \"What's New\", pull and push store listing text with the copyright and the App Review contact, push the display names and descriptions of in-app purchases and subscriptions, find missing localizations (listing, in-app purchases, subscriptions, Game Center), create versions and attach builds, upload screenshots, submit for App Review, release approved versions, and read or reply to customer reviews. Use whenever the user wants to ship, release or submit an iOS app version, asks where a version or build stands or why a build is missing, or wants to know what is missing before submitting, or wants release notes, listing text, localization gaps, screenshots or review replies handled, even if they never mention the API or this skill by name.",
+      "version": "0.12.0",
       "category": "development",
       "strict": false,
       "skills": [
@@ -23,7 +23,7 @@
       "name": "ios-analytics",
       "source": "./",
       "description": "Understand, audit and extend the analytics of an iOS app. Reads the Swift code to inventory the events it records, finds the screens, controls, errors, permission prompts and purchases that leave no trace, checks names, parameter cardinality, privacy and Firebase/GA4 limits, compares the code with an event plan, and works out where to instrument and what to record so the app's real behaviour (funnels, retention, monetization, failures) can be answered. Use whenever the user wants to add, review or plan analytics, events, funnels or tracking in an iOS app, asks where tracking is missing, what to measure, why a report is empty or wrong, or how to verify events in DebugView, even if they never say analytics.",
-      "version": "0.11.0",
+      "version": "0.12.0",
       "category": "development",
       "strict": false,
       "skills": [
@@ -34,7 +34,7 @@
       "name": "ios-aso",
       "source": "./",
       "description": "Audit and improve how an iOS app is found and how well its product page converts on the App Store - check the name, subtitle, keyword field and localizations against Apple's rules and character budgets, find keywords that are wasted or repeated across storefronts, pack a ranked keyword list into the 100-character field, review screenshots, preview and ratings, and research the competitive segment from Apple's public data (who ranks for the same terms, which small apps rank above their weight, what their names and users say). iOS only, built on Apple's own guidance and on the real App Store Connect fields. Use whenever the user asks about ASO, App Store optimization, keywords, ranking or visibility in App Store search, why an app is not found or not downloaded, improving the subtitle, name or screenshots, which languages to localize for, or what competing apps in the same segment or for the same keywords do better, even if they never say ASO.",
-      "version": "0.11.0",
+      "version": "0.12.0",
       "category": "development",
       "strict": false,
       "skills": [
@@ -45,7 +45,7 @@
       "name": "ios-release-train",
       "source": "./",
       "description": "Cut an iOS release from the repository side - find the app's real version and build number (not the first match in the project file), check the repo is ready to ship, bump the build number only on the targets that ship, close the changelog, and create and push the release tag that starts the CI build (Xcode Cloud) - with previews by default and nothing pushed without an explicit flag. Use whenever the user wants to release or ship a version, bump the build, tag a release, close or roll over the changelog, check whether a repo is ready to tag, or asks what version and build an iOS app is on, even if they never say release train.",
-      "version": "0.11.0",
+      "version": "0.12.0",
       "category": "development",
       "strict": false,
       "skills": [
@@ -56,7 +56,7 @@
       "name": "ios-xcstrings",
       "source": "./",
       "description": "Check, translate and update Xcode String Catalogs (.xcstrings) - per-language coverage, format-specifier mismatches that crash or garble text at runtime, plural forms a language needs, stale keys that are in fact still used, and a safe way to write translations that changes only the keys you translate and leaves Xcode's formatting untouched. Use whenever the user wants to translate or localize an iOS app, add a language, find untranslated or needs-review strings, validate a Localizable.xcstrings or InfoPlist.xcstrings, fix a catalog diff that touched thousands of lines, or asks how complete the localization is, even if they never say xcstrings.",
-      "version": "0.11.0",
+      "version": "0.12.0",
       "category": "development",
       "strict": false,
       "skills": [
@@ -67,7 +67,7 @@
       "name": "all-skills",
       "source": "./",
       "description": "Every skill in this repository, installed together.",
-      "version": "0.11.0",
+      "version": "0.12.0",
       "category": "development",
       "strict": false,
       "skills": [

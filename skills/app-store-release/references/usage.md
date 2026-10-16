@@ -57,6 +57,31 @@ leaderboard and achievement. `GAP` is a language that is missing outright; `~`
 is a language present only in another region (for example `en-GB` where
 `en-US` is expected). `--strict` exits 1 when any `GAP` exists.
 
+## Purchase texts - `push_purchases.py`
+
+The display name and description of each in-app purchase and subscription, and
+the display name of each subscription group. They belong to the product, not to
+a version, so there is no `--version`, and they can be pushed at any time.
+
+```bash
+python3 scripts/push_purchases.py --app my-app --dry-run
+python3 scripts/push_purchases.py --app my-app                  # asks first
+python3 scripts/push_purchases.py --app my-app --products com.example.app.premium.lifetime --locales en-US
+python3 scripts/push_purchases.py --app my-app --yes            # no prompt
+```
+
+The products and the group must already exist (create them, set their price and
+add the review screenshot in App Store Connect); a folder for one that does not
+exist stops the whole run before anything is sent. Products are matched by
+product ID, and a subscription group by its reference name. Only the fields in
+the files are touched, and only the ones that differ are sent. A locale the
+product lacks is created, and that needs a `name.txt`.
+
+The preview groups the changes by product and warns about a localization that
+is waiting for review or approved, which Apple may refuse to change. Afterwards,
+`audit_localizations.py` lists the languages of the store listing that the
+purchases still lack. The file layout is in `metadata-files.md`.
+
 ## Customer reviews - `reviews.py`
 
 ```bash

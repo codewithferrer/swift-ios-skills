@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Find localization gaps across everything an app shows in other languages:
 the store listing fields, the app name and subtitle, each in-app purchase,
-and each Game Center leaderboard and achievement. Read-only.
+each subscription and subscription group, and each Game Center leaderboard
+and achievement. Read-only.
 
 The expected locales default to the ones on the version's store listing
 (minus the app's `skip_locales`), so the report answers "which things are
@@ -51,6 +52,16 @@ def audit_app(client, app, version_string: str | None, locales: set | None) -> t
         name = iap["attributes"].get("name") or iap["attributes"].get("productId")
         present = set(client.list_iap_localizations(iap["id"]))
         rows.append(Coverage("In-app purchase", str(name), present, expected))
+
+    for sub in client.list_subscriptions(app.app_id):
+        name = sub["attributes"].get("name") or sub["attributes"].get("productId")
+        present = set(client.list_purchase_localizations("subscription", sub["id"]))
+        rows.append(Coverage("Subscription", str(name), present, expected))
+
+    for group in client.list_subscription_groups(app.app_id):
+        name = group["attributes"].get("referenceName")
+        present = set(client.list_purchase_localizations("subscription_group", group["id"]))
+        rows.append(Coverage("Subscription group", str(name), present, expected))
 
     detail_id = client.find_game_center_detail_id(app.app_id)
     if detail_id:

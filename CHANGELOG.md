@@ -1,5 +1,24 @@
 # Changelog
 
+## v0.12.0
+
+### Skills
+
+- `app-store-release`: new `push_purchases.py` writes the texts customers see
+  for in-app purchases and subscriptions: the display name and description of
+  each product and the display name (and optional custom app name) of each
+  subscription group, from one text file per field per locale next to the
+  listing text. Products are matched by product ID and groups by reference
+  name; only the fields that differ are sent, a locale the product lacks is
+  created, and the preview warns about a localization already with Apple. It
+  writes texts only: creating the products, their price, availability and
+  review screenshot stay in App Store Connect. Text over the 30 and 45
+  character limits, or for a product that does not exist, is refused before
+  anything is sent.
+- `app-store-release`: `audit_localizations.py` now also reports subscriptions
+  and subscription groups, which it did not read before. `push_metadata.py`
+  no longer lists the purchase folders as "not locale codes".
+
 ## v0.11.0
 
 ### Skills

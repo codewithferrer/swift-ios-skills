@@ -1,6 +1,6 @@
 ---
 name: app-store-release
-description: Automate App Store Connect release chores through Apple's official API instead of the website: check where a version, build upload or review stands, whether a version is ready to submit, and why a build failed, draft release notes from git history and push them as localized "What's New", pull and push store listing text with the copyright and the App Review contact, find missing localizations (listing, in-app purchases, Game Center), create versions and attach builds, upload screenshots, submit for App Review, release approved versions, and read or reply to customer reviews. Use whenever the user wants to ship, release or submit an iOS app version, asks where a version or build stands or why a build is missing, or wants to know what is missing before submitting, or wants release notes, listing text, localization gaps, screenshots or review replies handled, even if they never mention the API or this skill by name.
+description: Automate App Store Connect release chores through Apple's official API instead of the website: check where a version, build upload or review stands, whether a version is ready to submit, and why a build failed, draft release notes from git history and push them as localized "What's New", pull and push store listing text with the copyright and the App Review contact, push the display names and descriptions of in-app purchases and subscriptions, find missing localizations (listing, in-app purchases, subscriptions, Game Center), create versions and attach builds, upload screenshots, submit for App Review, release approved versions, and read or reply to customer reviews. Use whenever the user wants to ship, release or submit an iOS app version, asks where a version or build stands or why a build is missing, or wants to know what is missing before submitting, or wants release notes, listing text, localization gaps, screenshots or review replies handled, even if they never mention the API or this skill by name.
 compatibility: Python 3.9+ with requests and PyJWT[crypto]; needs network access to api.appstoreconnect.apple.com and an App Store Connect API key (App Manager role).
 ---
 
@@ -56,6 +56,23 @@ Typical order is 0 (draft the notes) -> 1 -> 2 -> 3 -> 4 -> 5, then 6 only after
 approves. Step 0 can happen before or after step 1.
 Steps 2-4 need the version to still be editable (not yet approved/released).
 
+## Purchase texts
+
+The display name and description customers see for an in-app purchase or a
+subscription, and the display name of a subscription group, are not tied to a
+version, so they have their own script:
+
+| Command | What it changes |
+|---------|-----------------|
+| `push_purchases.py --app A [--products P] [--locales L]` | Writes the `name.txt` and `description.txt` of each in-app purchase and subscription (and `name.txt` / `custom_app_name.txt` of each subscription group) that differ from App Store Connect, creating a locale the product does not have yet. |
+
+It only writes texts: the products and the group have to exist already, and
+price, availability, Family Sharing and the review screenshot stay in App
+Store Connect. The files live next to the listing text, one folder per product
+ID (`references/metadata-files.md`). Run it with `--dry-run` first and show the
+user the diff, as for `push_metadata.py`. Run `audit_localizations.py`
+afterwards to see which languages of the listing the products still lack.
+
 ## Checking where things stand
 
 Read-only, safe to run at any time and worth running before acting:
@@ -64,7 +81,7 @@ Read-only, safe to run at any time and worth running before acting:
 |---------|---------|
 | `status.py --app A` (or `--all`) | Newest versions and their review/release state, latest processed build, any upload since then that failed or got stuck (with Apple's error codes), latest Xcode Cloud run, reviews awaiting a reply. |
 | `readiness.py --app A [--version V]` | What App Store Connect would still ask for before this version can be submitted: build and export compliance, listing text, screenshots, copyright, privacy URL, category, age rating, content rights, App Review contact, price. Run it before step 5. |
-| `audit_localizations.py --app A` | Which listing fields, in-app purchases, Game Center leaderboards and achievements are missing a language the listing supports. |
+| `audit_localizations.py --app A` | Which listing fields, in-app purchases, subscriptions and subscription groups, Game Center leaderboards and achievements are missing a language the listing supports. |
 | `reviews.py list --app A [--unanswered] [--summary]` | Written customer reviews, newest first, with any reply under each. |
 | `pull_metadata.py --app A --version V` | Downloads the live listing text into the metadata folder. Bootstraps it and doubles as a backup. |
 
@@ -168,6 +185,12 @@ One block can serve several locales.
   never printed or pulled; remind the user to keep that file out of git.
 - **Text over Apple's character limits** (name/subtitle 30, keywords 100,
   promotional text 170, description 4000) is rejected locally before any call.
+- **Purchase texts are 30 characters for the name and 45 for the description**,
+  and are rejected locally the same way. A product with no localization, or
+  with a name but no description, stays at `MISSING_METADATA` in App Store
+  Connect, so one locale is the minimum and a description is advised.
+- **A purchase localization that is waiting for review or approved may refuse
+  changes** (`409`). `push_purchases.py` warns about those in the preview.
 - **`readiness.py` never turns "could not read" into a pass.** A section it cannot
   load shows as "could not be checked" and the verdict becomes UNCLEAR, not READY.
   It also cannot see App Privacy answers or agreements/tax/banking: say so when
@@ -211,6 +234,7 @@ release is above.
   visionOS is not a single flag: version and build lookups also have to filter
   by platform, and there was no non-iOS app to verify against.
 - **Everything else in App Store Connect**: categories, age rating, pricing,
-  App Review information, in-app purchases and app previews.
+  app previews, and creating in-app purchases and subscriptions or setting
+  their price, availability and review screenshot (only their texts are covered).
 
 Offline unit tests for the metadata logic: `python3 -m unittest discover -s tests`.

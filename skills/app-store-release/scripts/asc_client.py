@@ -680,14 +680,68 @@ class AppStoreConnectClient:
     def list_accessibility_declarations(self, app_id: str) -> list[dict]:
         return self._request("GET", f"/apps/{app_id}/accessibilityDeclarations", params={"limit": 20}).get("data", [])
 
+    def list_subscription_groups(self, app_id: str) -> list[dict]:
+        return self._request("GET", f"/apps/{app_id}/subscriptionGroups", params={"limit": 50}).get("data", [])
+
     def list_subscriptions(self, app_id: str) -> list[dict]:
         """Every subscription of the app, across its subscription groups."""
-        groups = self._request("GET", f"/apps/{app_id}/subscriptionGroups", params={"limit": 50}).get("data", [])
+        groups = self.list_subscription_groups(app_id)
         found = []
         for group in groups:
             data = self._request("GET", f"/subscriptionGroups/{group['id']}/subscriptions", params={"limit": 50})
             found.extend(data.get("data", []))
         return found
+
+    # -- Purchase localizations (display name and description) -------------------
+    #
+    # Field and relationship names are taken from Apple's published OpenAPI
+    # spec (4.5.1): the v1 create/update requests, not the v2 ones, which
+    # attach a localization to a content *version* of a purchase.
+    #
+    #   kind                  resource type                    relationship          parent type
+    PURCHASE_LOCALIZATIONS = {
+        "in_app_purchase": ("inAppPurchaseLocalizations", "inAppPurchaseV2", "inAppPurchases"),
+        "subscription": ("subscriptionLocalizations", "subscription", "subscriptions"),
+        "subscription_group": ("subscriptionGroupLocalizations", "subscriptionGroup", "subscriptionGroups"),
+    }
+
+    def list_purchase_localizations(self, kind: str, parent_id: str) -> dict:
+        """locale -> localization resource, for an in-app purchase (v2) id, a
+        subscription id or a subscription group id, depending on `kind`.
+        """
+        if kind == "in_app_purchase":
+            return self.list_iap_localizations(parent_id)
+        path = {
+            "subscription": f"/subscriptions/{parent_id}/subscriptionLocalizations",
+            "subscription_group": f"/subscriptionGroups/{parent_id}/subscriptionGroupLocalizations",
+        }[kind]
+        data = self._request("GET", path, params={"limit": 200})
+        return {item["attributes"]["locale"]: item for item in data.get("data", [])}
+
+    def create_purchase_localization(self, kind: str, parent_id: str, locale: str, attributes: dict) -> None:
+        """A new locale needs `name` among the attributes."""
+        resource, relationship, parent_type = self.PURCHASE_LOCALIZATIONS[kind]
+        body = dict(attributes)
+        body["locale"] = locale
+        self._request(
+            "POST",
+            f"/{resource}",
+            json={
+                "data": {
+                    "type": resource,
+                    "attributes": body,
+                    "relationships": {relationship: {"data": {"type": parent_type, "id": parent_id}}},
+                }
+            },
+        )
+
+    def update_purchase_localization(self, kind: str, localization_id: str, attributes: dict) -> None:
+        resource = self.PURCHASE_LOCALIZATIONS[kind][0]
+        self._request(
+            "PATCH",
+            f"/{resource}/{localization_id}",
+            json={"data": {"type": resource, "id": localization_id, "attributes": attributes}},
+        )
 
     # -- Version-level writes -----------------------------------------------------
 

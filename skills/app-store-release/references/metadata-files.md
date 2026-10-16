@@ -73,3 +73,43 @@ python3 scripts/push_metadata.py --app my-app --version 1.0.0 --fields copyright
 - A phone number without a country code only warns; a demo user without a
   password, an email that is not an email, or notes over the limit stop the run
   before any request is made.
+
+## Purchase texts
+
+`push_purchases.py` reads the display name and description of in-app purchases
+and subscriptions from the same metadata folder, one folder per product under
+the kind it belongs to:
+
+```
+metadata/
+  in_app_purchases/
+    com.example.app.premium.lifetime/       the product ID
+      en-US/
+        name.txt  description.txt
+      es-ES/
+        ...
+  subscriptions/
+    com.example.app.premium.monthly/        the product ID
+      en-US/
+        name.txt  description.txt
+  subscription_groups/
+    Premium/                                the group's reference name
+      en-US/
+        name.txt  custom_app_name.txt
+```
+
+| File | Limit | Applies to |
+|------|-------|------------|
+| `name.txt` | 30 | in-app purchase, subscription (display name); subscription group (display name shown in Settings) |
+| `description.txt` | 45 | in-app purchase, subscription |
+| `custom_app_name.txt` | - | subscription group only; optional, replaces the app's name next to the group |
+
+- The product folder is the product ID App Store Connect shows; the group
+  folder is the group's reference name, spaces included.
+- Locale folders are App Store Connect locale codes, as for the listing. Skipped
+  locales (`skip_locales` in the apps file) are skipped here too.
+- The same trailing-newline and empty-file rules apply, and the limits only
+  reject text that is certainly too long.
+- `push_metadata.py` ignores these three folders.
+- A new locale needs `name.txt`. A description is advised: without one the
+  product usually stays at `MISSING_METADATA`.
